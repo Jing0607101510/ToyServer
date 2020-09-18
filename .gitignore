@@ -1,7 +1,7 @@
 
 Config/*
 
-logs/
+/Log/logs/*
 
 *.o
 
