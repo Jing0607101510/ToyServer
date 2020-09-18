@@ -1,4 +1,5 @@
-Config/*.c
+Config/d.d
+
 logs/*
 
 *.o
