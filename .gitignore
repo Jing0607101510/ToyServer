@@ -1,0 +1,9 @@
+logs/*
+
+*.o
+
+makefile
+
+Logger
+
+
