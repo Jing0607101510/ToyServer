@@ -1,6 +1,6 @@
-Config/*
+Config/
 
-/logs/*
+logs/
 
 *.o
 
@@ -8,4 +8,4 @@ makefile
 
 Logger
 
-test/*
+test/
