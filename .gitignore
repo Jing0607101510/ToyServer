@@ -1,7 +1,4 @@
-
-Config/*
-
-/Log/logs/2020_09_16_
+logs/
 
 *.o
 
@@ -9,6 +6,4 @@ makefile
 
 Logger
 
-/Log/test/*
 
-!/Log/test/c.c
