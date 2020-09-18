@@ -9,6 +9,6 @@ makefile
 
 Logger
 
-/Log/test/
+/Log/test/*
 
 !/Log/test/c.c
