@@ -47,7 +47,8 @@ bool Logger::init(char* log_file_name, int cnt_split_file, long log_mode){
 void Logger::async_write_log(){
     while(true){ // 一直循环，直到退出
         std::string log_msg;
-        {
+        {   
+            // 搭配条件变量使用，要用unique_lock;
             std::unique_lock<std::mutex> guard(m_queue_mtx);
             while(m_log_queue.empty()){
                 if(!m_running) return;
@@ -103,7 +104,7 @@ void Logger::append_log(long level, char* format, ...){
             // 关闭原来文件，新建一个文件
             fflush(m_log_file);
             fclose(m_log_file);
-            m_log_file = fopen(full_file_name, "at+");
+            m_log_file = fopen(full_file_name, "at+"); // 新文件
         }
     }
     
@@ -136,7 +137,7 @@ void Logger::stop(){ // 暂停日志系统
     m_cond_var.notify_one();
     // 等待工作线程退出
     m_sp_thread->join();
-    fflush(m_log_file);
+    fflush(m_log_file); // 写入文件
 }
 
 Logger::Logger(){
@@ -149,5 +150,5 @@ Logger::Logger(){
 
 Logger::~Logger(){
     fflush(m_log_file);
-    fclose(m_log_file);
+    fclose(m_log_file); // 关闭
 }
