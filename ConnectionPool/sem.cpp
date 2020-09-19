@@ -25,3 +25,9 @@ bool Sem::wait(){
 bool Sem::post(){
     return sem_post(&m_sem) == 0;
 }
+
+int Sem::getvalue(){
+    int value;
+    sem_getvalue(&m_sem, &value);
+    return value;
+}

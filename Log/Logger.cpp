@@ -132,6 +132,7 @@ void Logger::append_log(long level, char* format, ...){
 }
 
 void Logger::stop(){ // 暂停日志系统
+    if(m_running == false) return;
     m_running = false;
     // 通过条件变量告诉 工作线程 停止工作
     m_cond_var.notify_one();
@@ -149,6 +150,7 @@ Logger::Logger(){
 }
 
 Logger::~Logger(){
+    stop(); // 停止
     fflush(m_log_file);
     fclose(m_log_file); // 关闭
 }

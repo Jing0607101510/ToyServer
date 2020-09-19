@@ -17,6 +17,7 @@ class Sem{
         ~Sem();
         bool wait();
         bool post();
+        int getvalue();
     private:
         sem_t m_sem;
 };  
