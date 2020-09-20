@@ -31,7 +31,7 @@ ConnectionPool::ConnectionPool(){
     max_num_conn = 20;
     min_num_conn = 2;
     cur_num_conn = 0;
-    busy_num_conn = 0;
+    // busy_num_conn = 0;
 
     user = "user";
     passwd = "user";
@@ -95,14 +95,16 @@ void ConnectionPool::manage_pool(){
         std::cout << "num_wait等待数量" << num_wait << std::endl;
         int busy_num_conn = num_wait >= 0 ? cur_num_conn : cur_num_conn + num_wait; // 正在被使用的连接数
         // 如果等待连接的数量 多于 设定的数量，则增加连接 DEFAULT_CONN_VARY 个
-        // if(num_wait >= MIN_WAIT_TASK_NUM){
-        //     expand_pool(min(DEFAULT_CONN_VARY, max_num_conn - cur_num_conn));
-        // }
+        if(num_wait >= MIN_WAIT_TASK_NUM){
+            std::cout << "新增加连接" << min(DEFAULT_CONN_VARY, max_num_conn - cur_num_conn) << std::endl;
+            expand_pool(min(DEFAULT_CONN_VARY, max_num_conn - cur_num_conn));
+        }
 
-        // // 如果 正在被使用的连接×2 小于全部连接 
-        // else if(busy_num_conn * 2 < cur_num_conn){
-        //     reduce_pool(min(DEFAULT_CONN_VARY, cur_num_conn - min_num_conn));
-        // }
+        // 如果 正在被使用的连接×2 小于全部连接 
+        else if(busy_num_conn * 2 < cur_num_conn){
+            std::cout << "新减少连接" << min(DEFAULT_CONN_VARY, cur_num_conn - min_num_conn) << std::endl;
+            reduce_pool(min(DEFAULT_CONN_VARY, cur_num_conn - min_num_conn));
+        }
     }
 }
 
@@ -172,7 +174,7 @@ void ConnectionPool::stop(){
     for(int i = 0; i < cur_num; i++){
         sem.wait(); // 一开始有剩余的连接，所以不阻塞，后面阻塞等待分配出去的连接归还
     }
-    sem = Sem(cur_num_conn);
+    sem.reset_value(cur_num_conn);
 }
 
 void ConnectionPool::start(){
@@ -220,7 +222,7 @@ void ConnectionPool::retConnection(MYSQL* conn){
 
 ConnectionRAII::ConnectionRAII(MYSQL** conn, ConnectionPool* pool){
     *conn = pool->getConnection();
-    this->conn = conn;
+    this->conn = *conn;
     this->pool = pool;
 }
 

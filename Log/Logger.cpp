@@ -1,9 +1,12 @@
+#include <iostream>
+
 #include "Logger.h"
 
 
-bool Logger::init(char* log_file_name, int cnt_split_file, long log_mode){
+bool Logger::init(char* log_file_name, int cnt_split_file, bool run_backend, long log_mode){
     this->m_log_mode = log_mode;
     this->m_cnt_split_file = cnt_split_file;
+    this->m_run_backend = run_backend;
     printf("split %d\n", cnt_split_file);
     // 获取日期，以日期为文件名，首先得到日期字符串
     time_t now = time(NULL);
@@ -128,6 +131,10 @@ void Logger::append_log(long level, char* format, ...){
         }
         m_cond_var.notify_one();
     }
+
+    if(!m_run_backend){
+        cerr << content; // 不带缓冲区输出
+    }
     
 }
 
@@ -147,6 +154,7 @@ Logger::Logger(){
     this->m_running = true;
     this->m_log_cnt = 0;
     this->m_split_cnt = 0;
+    this->m_run_backend = false;
 }
 
 Logger::~Logger(){

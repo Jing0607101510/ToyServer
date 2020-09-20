@@ -20,6 +20,12 @@ void func2(ConnectionPool* pool, int id){
     cout << id << "退出线程" << endl;
 }
 
+void func0(ConnectionPool* pool, int id){
+    cout << id << "进入线程" << endl;
+    for(int i = 0; i < 14; i++)
+        pool->sem.post();
+}
+
 int main(void){
     Logger::get_instance().init("../Log/logs/", 3L, LOG_MODE_ASYNC);
     ConnectionPool& pool = ConnectionPool::getInstance();
@@ -40,8 +46,23 @@ int main(void){
     thread t1(func, &pool, 1);
     thread t2(func, &pool, 2);
     sleep(2);
-    thread t3(func2, &pool, 3);
-    thread t4(func2, &pool, 4);
+    thread t3(func, &pool, 3);
+    thread t4(func, &pool, 4);
+    sleep(2);
+    thread t5(func, &pool, 3);
+    thread t6(func, &pool, 4);
+    sleep(2);
+    thread t7(func, &pool, 3);
+    thread t8(func, &pool, 4);
+    sleep(2);
+    thread t9(func, &pool, 3);
+    thread t10(func, &pool, 4);
+    sleep(2);
+    thread t11(func, &pool, 3);
+    thread t12(func, &pool, 4);
+    
+    sleep(6);
+    thread t0(func0, &pool, 0);
 
     pool.sem.wait();
     cout << "跑到这里了" << pool.sem.getvalue() << endl;

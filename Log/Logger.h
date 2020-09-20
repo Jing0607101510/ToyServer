@@ -73,6 +73,7 @@ class Logger{
 
         bool m_log_mode; // 日志模式：同步或者异步
         bool m_running; // 处理日志的线程在running为false时，退出。 // 或者是否有开启日志
+        bool m_run_backend; // 是否以守护进程的方式运行
 
 
         // 自定义日志队列类，使用锁来保证线程安全

@@ -7,19 +7,22 @@
 #ifndef __SEM_H__
 #define __SEM_H__
 
-#include <semaphore.h>
+#include <mutex>
+#include <condition_variable>
 
 
 class Sem{
     public:
-        Sem();
-        Sem(int value);
-        ~Sem();
-        bool wait();
-        bool post();
-        int getvalue();
+        Sem(long int value = 0);
+        void wait();
+        void post();
+        long int getvalue();
+        void reset_value(long int value);
     private:
-        sem_t m_sem;
+        long int value; // 信号量的值
+        long int wakeups;  // 能唤醒的名额数
+        std::mutex mtx;
+        std::condition_variable cond;
 };  
 
 

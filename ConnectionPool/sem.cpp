@@ -6,28 +6,30 @@
 
 #include "sem.h"
 
-Sem::Sem(){
-    sem_init(&m_sem, 0, 0);
+Sem::Sem(long int value) : value(value), wakeups(0){}
+
+void Sem::wait(){
+    std::unique_lock<std::mutex> guard(mtx);
+    if(--value < 0){
+        cond.wait(guard, [&](){return wakeups>0;});
+        wakeups--;
+    } 
 }
 
-Sem::Sem(int value){
-    sem_init(&m_sem, 0, value);
+void Sem::post(){
+    std::lock_guard<std::mutex> guard(mtx);
+    if(++value <= 0){
+        wakeups++;
+        cond.notify_one();
+    }
 }
 
-Sem::~Sem(){
-    sem_destroy(&m_sem);
-}
-
-bool Sem::wait(){
-    return sem_wait(&m_sem) == 0;
-}
-
-bool Sem::post(){
-    return sem_post(&m_sem) == 0;
-}
-
-int Sem::getvalue(){
-    int value;
-    sem_getvalue(&m_sem, &value);
+long int Sem::getvalue(){
+    std::lock_guard<std::mutex> guard(mtx);
     return value;
+}
+
+void Sem::reset_value(long int value){
+    std::lock_guard<std::mutex> guard(mtx);
+    this->value = value;
 }

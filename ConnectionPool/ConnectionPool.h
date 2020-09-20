@@ -36,9 +36,6 @@ class ConnectionPool{
         void stop();
         void start();
 
-        Sem sem; // 信号量，由于归还连接一定有空间可以放，而申请连接不一定有，所以只需要一个信号量来控制能不能不能申请连接。暂时先阻塞。 值可能为负数
-
-
     private:
         void manage_pool(); // 管理线程
         void expand_pool(int size); // 扩大连接池
@@ -54,6 +51,7 @@ class ConnectionPool{
         // 连接池，使用list实现
         std::list<MYSQL*> conns;
         std::mutex conn_mtx; // 连接池链表的互斥
+        Sem sem; // 信号量，由于归还连接一定有空间可以放，而申请连接不一定有，所以只需要一个信号量来控制能不能不能申请连接。暂时先阻塞。 值可能为负数
 
         // 管理线程 用于定时扩缩连接池
         std::shared_ptr<std::thread> sp_thread;
@@ -62,7 +60,7 @@ class ConnectionPool{
         int max_num_conn; // 最大连接数
         int min_num_conn; // 最小连接数
         int cur_num_conn; // 当前建立的连接数，在running的条件下由管理线程修改
-        int busy_num_conn; // 当前正在被使用的连接数
+        // int busy_num_conn; // 当前正在被使用的连接数
 
         // 数据库连接相关
         std::string user;
