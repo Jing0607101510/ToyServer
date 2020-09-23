@@ -21,6 +21,7 @@
 
 using std::min;
 
+// 声明
 enum LOG_LEVEL{
     LOG_LEVEL_DEBUG,
     LOG_LEVEL_INFO,

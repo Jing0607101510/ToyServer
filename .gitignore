@@ -8,4 +8,12 @@ Logger
 
 Configure_test
 
+pool_test
+
+Logger.o
+
+Logger_test.o
+
+
+
 
