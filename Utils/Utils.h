@@ -15,4 +15,5 @@ bool set_sock_nodelay(int fd);
 bool set_sock_linger(int fd);
 bool set_sock_resue_port(int fd);
 void register_sigaction(int sig, SA_Handler handler, bool restart); // restart 参数：被信号中断的系统调用是否自行重启
+void daemon_run(); // 以守护进程方式运行
 #endif

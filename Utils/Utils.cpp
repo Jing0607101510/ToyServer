@@ -7,8 +7,11 @@
 #include <sys/socket.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <unistd.h>
+#include <stdlib.h>
 
 #include "Utils.h"
+#include "../Log/Logger.h"
 
 // 创建socket，绑定地址，调用listen函数
 int socket_bind_listen(int port){
@@ -73,6 +76,7 @@ bool set_sock_nolinger(int fd){
     else return true;
 }
 
+
 // 设置端口重用
 bool set_sock_reuse_port(int fd){
     int optval = 1;
@@ -82,6 +86,7 @@ bool set_sock_reuse_port(int fd){
     else return true;
 }
 
+
 // 注册信号处理函数
 void register_sigaction(int sig, SA_Handler handler, bool restart){
     struct sigaction sa;
@@ -90,4 +95,37 @@ void register_sigaction(int sig, SA_Handler handler, bool restart){
     if(restart)
         sa.sa_flags |= SA_RESTART;
     assert(sigaction(sig, &sa, nullptr) != -1);
+}
+
+
+// 设置以守护进程方式运行
+void daemon_run(){
+    // 创建子进程
+    pid_t pid;
+    signal(SIGCHLD, SIG_IGN);
+
+    pid = fork();
+    if(pid < 0){
+        LOG_ERROR("Fork Error.");
+        perror("Fork Error.");
+        exit(1);
+    }
+    else if(pid > 0){
+        exit(0); // 退出父进程
+    }
+
+    setsid();
+
+    int fd;
+    fd = open("/dev/null", O_RDWR, 0);
+    if(fd != -1){
+        dup2(fd, STDIN_FILENO);
+        dup2(fd, STDOUT_FILENO);
+        dup2(fd, STDERR_FILENO);
+    }
+    if(fd > 2){
+        close(fd);
+    }
+
+    LOG_INFO("Server Run Daemon.");
 }
