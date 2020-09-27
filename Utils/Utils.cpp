@@ -9,9 +9,14 @@
 #include <signal.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <arpa/inet.h>
+#include <assert.h>
+#include <netinet/tcp.h>
+#include <iostream>
 
 #include "Utils.h"
 #include "../Log/Logger.h"
+#include "../Config/Configure.h"
 
 // 创建socket，绑定地址，调用listen函数
 int socket_bind_listen(int port){
@@ -51,7 +56,7 @@ bool set_sock_non_blocking(int fd){
     int flag = fcntl(fd, F_GETFL, 0);
     if(flag == -1) return false;
     flag = flag | O_NONBLOCK;
-    int ret = fcnt(fd, F_SETFL, flag);
+    int ret = fcntl(fd, F_SETFL, flag);
     if(ret == -1) return false;
     else return true;
 }
@@ -128,4 +133,9 @@ void daemon_run(){
     }
 
     LOG_INFO("Server Run Daemon.");
+}
+
+// 初始化日志
+void start_log(Config config){
+    Logger::get_instance().init(config.log_file_name, config.run_backend, config.log_mode);
 }

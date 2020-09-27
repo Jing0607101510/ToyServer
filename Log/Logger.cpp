@@ -3,11 +3,11 @@
 #include "Logger.h"
 
 
-bool Logger::init(char* log_file_name, int cnt_split_file, bool run_backend, long log_mode){
+bool Logger::init(char* log_file_name, bool run_backend, long log_mode, int cnt_split_file){
     this->m_log_mode = log_mode;
     this->m_cnt_split_file = cnt_split_file;
     this->m_run_backend = run_backend;
-    printf("split %d\n", cnt_split_file);
+
     // 获取日期，以日期为文件名，首先得到日期字符串
     time_t now = time(NULL);
     struct tm* local_now = localtime(&now);
@@ -47,7 +47,7 @@ bool Logger::init(char* log_file_name, int cnt_split_file, bool run_backend, lon
 }
 
 
-void Logger::async_write_log(){
+void Logger::async_write_log(){ // 线程运行这个函数，可以访问对象的成员
     while(true){ // 一直循环，直到退出
         std::string log_msg;
         {   
@@ -89,7 +89,7 @@ void Logger::append_log(long level, char* format, ...){
         std::lock_guard<std::mutex> guard(m_mtx);
         m_log_cnt++;
         // 跨日期 或者 超出每个日志文件的行数，则新开一个文件
-        printf("测试 cnt = %lld, m_cnt_split = %d, cnt %% split = %lld\n", m_log_cnt, m_cnt_split_file, m_log_cnt % m_cnt_split_file);
+        // printf("测试 cnt = %lld, m_cnt_split = %d, cnt %% split = %lld\n", m_log_cnt, m_cnt_split_file, m_log_cnt % m_cnt_split_file);
         if(local_now->tm_mday != m_today || m_log_cnt > m_cnt_split_file){
             char full_file_name[512] = {0};
             char date_str[256] = {0};
@@ -110,7 +110,7 @@ void Logger::append_log(long level, char* format, ...){
             m_log_file = fopen(full_file_name, "at+"); // 新文件
         }
     }
-    
+
     // 格式化日志字符串
     char msg[512] = {0};
     va_list varglist;
@@ -133,7 +133,7 @@ void Logger::append_log(long level, char* format, ...){
     }
 
     if(!m_run_backend){
-        cerr << content; // 不带缓冲区输出
+        std::cerr << content; // 不带缓冲区输出
     }
     
 }
@@ -141,10 +141,12 @@ void Logger::append_log(long level, char* format, ...){
 void Logger::stop(){ // 暂停日志系统
     if(m_running == false) return;
     m_running = false;
-    // 通过条件变量告诉 工作线程 停止工作
-    m_cond_var.notify_one();
-    // 等待工作线程退出
-    m_sp_thread->join();
+    if(m_log_mode == LOG_MODE_ASYNC){
+        // 通过条件变量告诉 工作线程 停止工作
+        m_cond_var.notify_one();
+        // 等待工作线程退出
+        m_sp_thread->join();
+    }
     fflush(m_log_file); // 写入文件
 }
 
@@ -159,6 +161,5 @@ Logger::Logger(){
 
 Logger::~Logger(){
     stop(); // 停止
-    fflush(m_log_file);
     fclose(m_log_file); // 关闭
 }
