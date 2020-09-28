@@ -24,5 +24,6 @@ void register_sigaction(int sig, SA_Handler handler, bool restart); // restart �
 void daemon_run(); // 以守护进程方式运行
 void start_log(Config config);
 pid_t gettid();
-
+bool is_dir_exists(char* dirname);
+bool create_dir(char* dirname);
 #endif

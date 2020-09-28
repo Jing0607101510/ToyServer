@@ -1,7 +1,7 @@
 /*
 @Author: Jing
-@Date: 2020.9.26
-@Desc: 时间循环
+@Date: 2020.09.26
+@Desc: 事件循环
 */
 
 #ifndef __EVENT_LOOP_H__

@@ -33,13 +33,13 @@ class Config{
 
         void parse_args(int argc, char* argv[]); // 设置参数
         
-        static Config& getInstance();
+        // static Config& getInstance();
 
-        Config(const Config& config) = delete;
-        Config& operator=(const Config& config) = delete;
-    private:
+        // Config(const Config& config) = delete;
+        // Config& operator=(const Config& config) = delete;
+    // private:
         Config(); // 默认方式初始化参数
-        static Config* config;
+        // static Config* config;
 };
 
 

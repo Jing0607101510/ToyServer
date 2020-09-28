@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <syscall.h>
+#include <assert.h>
+#include <functional>
 
 #include "EventLoopThread.h"
 #include "../Utils/Utils.h"
@@ -26,9 +28,7 @@ namespace CurrentThread{
 EventLoopThread::EventLoopThread():
     m_loop(nullptr),
     m_running(false),
-    m_tid(-1),
-    m_mtx(),
-    m_cond_var(m_mtx){}
+    m_tid(-1){}
 
 
 
@@ -38,12 +38,12 @@ EventLoopThread::~EventLoopThread(){
 
 
 EventLoop* EventLoopThread::startLoop(){
-    if(m_running) return;
+    assert(!m_running);
     m_running = true;
-    m_sp_thread.reset(new std::thread(worker_threadFunc)); // 开启线程
+    m_sp_thread.reset(new std::thread(std::bind(&EventLoopThread::worker_threadFunc, this))); // 开启线程
     {
-        std::lock_guard<std::mutex> guard(m_mtx);
-        while(m_loop == nullptr) m_cond_var.wait();
+        std::unique_lock<std::mutex> guard(m_mtx);
+        while(m_loop == nullptr) m_cond_var.wait(guard);
     }
     return m_loop;
 }

@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "Logger.h"
+#include "../Utils/Utils.h"
 
 
 bool Logger::init(char* log_file_name, bool run_backend, long log_mode, int cnt_split_file){
@@ -31,6 +32,10 @@ bool Logger::init(char* log_file_name, bool run_backend, long log_mode, int cnt_
             strncpy(m_dir_name, log_file_name, min(int(ptr-log_file_name+1), int(sizeof(m_dir_name)-1)));
             strncpy(m_file_name, ptr+1, min(strlen(ptr+1), sizeof(m_file_name)-1));
             snprintf(full_file_name, sizeof(full_file_name)-1, "%s%s_%s", m_dir_name, date_str, m_file_name);
+            // 判断是否存在这个目录，如果没有则创建
+            if(!is_dir_exists(m_dir_name)){
+                create_dir(m_dir_name);
+            }
         }
     }
 

@@ -11,7 +11,7 @@
 #include "Configure.h"
 
 
-Config* Config::config = nullptr;
+// Config* Config::config = nullptr;
 
 void Config::parse_args(int argc, char* argv[]){ // 设置参数
     int opt = -1;
@@ -72,13 +72,13 @@ void Config::parse_args(int argc, char* argv[]){ // 设置参数
     }
 }
 
-// 只读，所以不用双检查锁
-Config& Config::getInstance(){
-    if(config == nullptr){
-        config = new Config();
-    }
-    return *config;
-}
+// // 只读，所以不用双检查锁
+// Config& Config::getInstance(){
+//     if(config == nullptr){
+//         config = new Config();
+//     }
+//     return *config;
+// }
 
 Config::Config(){ // 默认方式初始化参数
     server_port = 9999;
@@ -86,7 +86,7 @@ Config::Config(){ // 默认方式初始化参数
     run_backend = false;
 
     enable_logging = false;
-    log_file_name = "logs/log";
+    log_file_name = "logs/log/log";
     log_mode = 0; // 同步
 
     db_url = "127.0.0.1";

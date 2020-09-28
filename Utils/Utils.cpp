@@ -13,6 +13,9 @@
 #include <assert.h>
 #include <netinet/tcp.h>
 #include <iostream>
+#include <string.h>
+#include <sys/stat.h>
+#include <string.h>
 
 #include "Utils.h"
 #include "../Log/Logger.h"
@@ -137,10 +140,41 @@ void daemon_run(){
 
 // 初始化日志
 void start_log(Config config){
-    Logger::get_instance().init(config.log_file_name, config.run_backend, config.log_mode);
+    char log_file_name[512];
+    strcpy(log_file_name, config.log_file_name.c_str());
+    Logger::get_instance().init(log_file_name, config.run_backend, config.log_mode);
 }
 
 
 pid_t gettid(){
     return static_cast<pid_t>(::syscall(SYS_gettid));
+}
+
+
+bool is_dir_exists(char* dirname){
+    if(access(dirname, F_OK) < 0){
+        return false;
+    }
+    else return true;
+}
+
+bool create_dir(char* dirname){
+    char dir_name[512];
+    strcpy(dir_name, dirname);
+    int len = strlen(dir_name);
+    if(dir_name[len-1] != '/'){
+        strcat(dir_name, "/");
+        len++;
+    }
+
+    for(int i = 0; i < len; i++){
+        if(dir_name[i] == '/'){
+            dir_name[i] = '\0';
+            if(!is_dir_exists(dir_name)){
+                if(mkdir(dir_name, 0777) < 0)
+                    return false;
+            }
+            dir_name[i] = '/';
+        }
+    }
 }
