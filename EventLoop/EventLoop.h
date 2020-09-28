@@ -12,12 +12,12 @@ class EventLoop{
         EventLoop();
         ~EventLoop();
         void loop();
+        void quit();
+        void assertInLoopThread();
     private:
-        int wakeup_fd;
+        int m_wakeup_fd;
+        bool m_looping;
     private:
-        void readHandler();
-        void errorHandler();
-        void connHandler();
         int create_wakeup_fd();
 };
 

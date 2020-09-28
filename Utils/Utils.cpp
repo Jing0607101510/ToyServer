@@ -139,3 +139,8 @@ void daemon_run(){
 void start_log(Config config){
     Logger::get_instance().init(config.log_file_name, config.run_backend, config.log_mode);
 }
+
+
+pid_t gettid(){
+    return static_cast<pid_t>(::syscall(SYS_gettid));
+}

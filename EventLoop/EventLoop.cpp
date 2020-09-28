@@ -11,3 +11,7 @@ __thread EventLoop* t_loopInThisThread = nullptr;
 EventLoop::EventLoop();
 EventLoop::~EventLoop();
 void EventLoop::loop();
+void EventLoop::quit()
+void EventLoop::assertInLoopThread();
+
+int EventLoop::create_wakeup_fd();
