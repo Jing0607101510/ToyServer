@@ -16,7 +16,8 @@ class Config{
         // 服务器设置相关
         int server_port; // -p
         int num_thread;  // -t
-        bool run_backend   ; // 是否以服务形式运行 //-b
+        bool run_backend; // 是否以服务形式运行 //-b
+        bool no_linger;
 
         // 日志系统相关
         bool enable_logging; // -l

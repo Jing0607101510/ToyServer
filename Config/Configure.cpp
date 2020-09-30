@@ -25,7 +25,8 @@ void Config::parse_args(int argc, char* argv[]){ // 设置参数
         {"db_passwd", required_argument, NULL, 'w'},
         {"min_num_conn", required_argument, NULL, 'i'},
         {"max_num_conn", required_argument, NULL, 'x'},
-        {"db_name", required_argument, NULL, 'm'}
+        {"db_name", required_argument, NULL, 'm'},
+        {"no_linger", no_argument, NULL, 'g'}
     };
 
     while((opt = getopt_long(argc, argv, opt_str, long_options, &option_index)) != -1){
@@ -38,6 +39,9 @@ void Config::parse_args(int argc, char* argv[]){ // 设置参数
                 break;
             case 'd' :
                 db_port = atoi(optarg);
+                break;
+            case 'g':
+                no_linger = true;
                 break;
             case 'i' : 
                 min_num_conn = atoi(optarg);
@@ -88,6 +92,7 @@ Config::Config(){ // 默认方式初始化参数
     server_port = 9999;
     num_thread = 8;
     run_backend = false;
+    no_linger = false;
 
     enable_logging = false;
     log_file_name = "logs/log/log";

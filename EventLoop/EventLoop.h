@@ -19,6 +19,7 @@ class EventLoop{
         void loop();
         void quit();
         void assertInLoopThread();
+        void wakeup();
         void addToPoller(std::shared_ptr<Channel> sp_channel, int timeout=0);
     private:
         int m_wakeup_fd;

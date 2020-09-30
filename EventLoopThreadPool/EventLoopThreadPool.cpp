@@ -31,6 +31,7 @@ void EventLoopThreadPool::stop(){
     if(!m_running) return;
     else{
         LOG_INFO("Stop EventLoopThreadPool");
+        m_running = false;
         for(int i = 0; i < m_threads.size(); i++){
             m_threads[i]->stop();
         }

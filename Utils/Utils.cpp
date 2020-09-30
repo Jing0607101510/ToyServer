@@ -22,6 +22,7 @@
 #include "../Config/Configure.h"
 #include "../ConnectionPool/ConnectionPool.h"
 
+
 // 创建socket，绑定地址，调用listen函数
 int socket_bind_listen(int port){
     if(port < 0 || port > 65535) return -1;
@@ -201,5 +202,15 @@ void setup_server(Config config){
 
     // 设置信号处理函数
     register_sigaction(SIGPIPE, SIG_IGN);
-    register_sigaction(SIGTERM, SIG_IGN);
+    register_sigaction(SIGTERM, sigterm_handler); // 头文件中已经声明sigterm_handler函数
+}
+
+
+
+void sigterm_handler(int sig){ // SIGTERM的信号处理函数
+    if(g_base_loop){
+        g_base_loop->quit(); // 退出主循环
+        g_base_loop->wakeup(); 
+        g_base_loop = nullptr;
+    }
 }

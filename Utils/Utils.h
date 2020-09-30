@@ -12,8 +12,11 @@
 #include <syscall.h>
 
 #include "../Config/Configure.h"
+#include "../EventLoop/EventLoop.h"
 
 typedef void(*SA_Handler)(int sig);
+
+extern EventLoop* g_base_loop; // 声明
 
 int socket_bind_listen(int port); // 创建socket，绑定地址，调用listen函数
 bool set_sock_non_blocking(int fd);
@@ -28,6 +31,6 @@ pid_t gettid();
 bool is_dir_exists(char* dirname);
 bool create_dir(char* dirname);
 void setup_server(Config config);
-
+void sigterm_handler(int sig); // SIGTERM的信号处理函数
 
 #endif

@@ -8,6 +8,10 @@
 #include "Server/Server.h"
 #include "Config/Configure.h"
 #include "Utils/Utils.h"
+#include "EventLoop/EventLoop.h"
+
+EventLoop* g_base_loop = nullptr;
+
 int main(int argc, char* argv[]){
     // 读取配置
     Config config;
@@ -16,6 +20,7 @@ int main(int argc, char* argv[]){
     setup_server(config);
     // 启动server和主循环
     EventLoop loop;
+    g_base_loop = &loop;
     Server server(config, &loop);
     server.start();
     loop.loop();

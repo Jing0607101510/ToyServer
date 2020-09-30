@@ -36,3 +36,8 @@ int EventLoop::create_wakeup_fd(){
 void addToPoller(std::shared_ptr<Channel> sp_channel, int timeout=0){
 
 }
+
+// 向eventfd中写
+void wakeup(){
+
+}

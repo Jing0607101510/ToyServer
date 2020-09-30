@@ -27,6 +27,7 @@ class Server{
         std::shared_ptr<Channel> m_listen_channel;
         EventLoop* m_loop;
         bool m_running;
+        bool m_is_nolinger;
         std::unique_ptr<EventLoopThreadPool> m_thread_pool;
 };
 
