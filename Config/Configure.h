@@ -28,6 +28,7 @@ class Config{
         int db_port; // --db_port
         std::string db_user; // --db_user
         std::string db_passwd; // --passwd
+        std::string db_name;
         int min_num_conn; // 数据库连接池最小连接数 // --min_num_conn
         int max_num_conn; // 数据库连接池最大容量连接数 // --max_num_conn
 

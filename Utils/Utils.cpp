@@ -20,6 +20,7 @@
 #include "Utils.h"
 #include "../Log/Logger.h"
 #include "../Config/Configure.h"
+#include "../ConnectionPool/ConnectionPool.h"
 
 // 创建socket，绑定地址，调用listen函数
 int socket_bind_listen(int port){
@@ -102,6 +103,7 @@ void register_sigaction(int sig, SA_Handler handler, bool restart){
     sa.sa_handler = handler;
     if(restart)
         sa.sa_flags |= SA_RESTART;
+    sa.sa_flags = 0;
     assert(sigaction(sig, &sa, nullptr) != -1);
 }
 
@@ -177,4 +179,27 @@ bool create_dir(char* dirname){
             dir_name[i] = '/';
         }
     }
+}
+
+// 创建连接
+void create_connection_pool(Config config){
+    ConnectionPool& pool = ConnectionPool::getInstance();
+    pool.init(config.db_url, config.db_port, config.db_name, config.db_user, config.db_passwd, config.min_num_conn, config.max_num_conn);
+}
+
+// 设置服务器
+void setup_server(Config config){
+    // 开启日志
+    start_log(config);
+
+    // 是否以守护进程方式运行
+    if(config.run_backend)
+        daemon_run();
+    
+    // 创建并初始化连接池
+    create_connection_pool(config);
+
+    // 设置信号处理函数
+    register_sigaction(SIGPIPE, SIG_IGN);
+    register_sigaction(SIGTERM, SIG_IGN);
 }

@@ -31,3 +31,8 @@ void EventLoop::assertInLoopThread(){
 int EventLoop::create_wakeup_fd(){
     
 }
+
+// 加入到Poller中监听
+void addToPoller(std::shared_ptr<Channel> sp_channel, int timeout=0){
+
+}

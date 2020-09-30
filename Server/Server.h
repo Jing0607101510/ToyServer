@@ -10,15 +10,24 @@
 #include <memory>
 
 #include "../EventLoop/EventLoop.h"
+#include "../Channel/Channel.h"
+#include "../EventLoopThreadPool/EventLoopThreadPool.h"
+#include "../Config/Configure.h"
 
 class Server{
     public:
-        Server();
+        Server(Config config, EventLoop* loop);
         ~Server();
         void start();
+        void readHandler();
+        void connHandler();
+
     private:
-        int listen_fd;
-        EventLoop* loop;
+        int m_listen_fd;
+        std::shared_ptr<Channel> m_listen_channel;
+        EventLoop* m_loop;
+        bool m_running;
+        std::unique_ptr<EventLoopThreadPool> m_thread_pool;
 };
 
 

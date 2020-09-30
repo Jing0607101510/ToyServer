@@ -79,7 +79,6 @@ class ConnectionRAII{
         ~ConnectionRAII(); // 析构时归还
     private:
         MYSQL* conn;
-        ConnectionPool* pool;
 };
 
 #endif

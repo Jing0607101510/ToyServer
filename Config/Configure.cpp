@@ -24,7 +24,8 @@ void Config::parse_args(int argc, char* argv[]){ // 设置参数
         {"db_user", required_argument, NULL, 'u'},
         {"db_passwd", required_argument, NULL, 'w'},
         {"min_num_conn", required_argument, NULL, 'i'},
-        {"max_num_conn", required_argument, NULL, 'x'}
+        {"max_num_conn", required_argument, NULL, 'x'},
+        {"db_name", required_argument, NULL, 'm'}
     };
 
     while((opt = getopt_long(argc, argv, opt_str, long_options, &option_index)) != -1){
@@ -43,6 +44,9 @@ void Config::parse_args(int argc, char* argv[]){ // 设置参数
                 break;
             case 'l' :
                 enable_logging = true;
+                break;
+            case 'm':
+                db_name = optarg;
                 break;
             case 'n' :
                 log_file_name = optarg;
@@ -93,6 +97,7 @@ Config::Config(){ // 默认方式初始化参数
     db_port = 3306;
     db_user = "user";
     db_passwd = "user";
+    db_name = "web";
 
     min_num_conn = 4;
     max_num_conn = 16;

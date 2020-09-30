@@ -221,11 +221,10 @@ void ConnectionPool::retConnection(MYSQL* conn){
 
 
 ConnectionRAII::ConnectionRAII(MYSQL** conn, ConnectionPool* pool){
-    *conn = pool->getConnection();
+    *conn = ConnectionPool::getInstance().getConnection();
     this->conn = *conn;
-    this->pool = pool;
 }
 
 ConnectionRAII::~ConnectionRAII(){ // 析构时归还
-    this->pool->retConnection(this->conn);
+    ConnectionPool::getInstance().retConnection(this->conn);
 }
