@@ -62,6 +62,7 @@ void Server::readHandler(){
         // 获取下一个loop
         EventLoop* loop = m_thread_pool->getNextLoop();
         // 创建HttpData对象
+        // 设置HttpData对象中的Channel的Holder
         // TODO
     }
 }
