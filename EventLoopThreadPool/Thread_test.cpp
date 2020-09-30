@@ -17,5 +17,20 @@ int main(int argc, char* argv[]){
     cout << "Ok3" << endl;
     EventLoop loop;
     cout << "Ok4" << endl;
-    EventLoopThreadPool pool(&loop, 2);
+    EventLoopThreadPool pool(&loop, 5);
+    pool.start();
+    cout << "finish" << endl;
+    EventLoop* loop1 = pool.getNextLoop();
+    cout << "loop1" << loop1 << endl;
+    EventLoop* loop2 = pool.getNextLoop();
+    cout << "loop2" << loop2 << endl;
+    EventLoop* loop3 = pool.getNextLoop();
+    cout << "loop3" << loop3 << endl;
+    EventLoop* loop4 = pool.getNextLoop();
+    cout << "loop3" << loop4 << endl;
+    EventLoop* loop5 = pool.getNextLoop();
+    cout << "loop3" << loop5 << endl;
+    EventLoop* loop6 = pool.getNextLoop();
+    cout << "loop3" << loop6 << endl;
+    cout << "finish2" << endl;
 }

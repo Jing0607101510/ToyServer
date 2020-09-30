@@ -9,10 +9,11 @@
 #include <syscall.h>
 #include <assert.h>
 #include <functional>
+#include <iostream>
 
 #include "EventLoopThread.h"
 #include "../Utils/Utils.h"
-
+#include "../Log/Logger.h"
 
 namespace CurrentThread{
     __thread int t_cachedTid = 0;
@@ -40,7 +41,8 @@ EventLoopThread::~EventLoopThread(){
 EventLoop* EventLoopThread::startLoop(){
     assert(!m_running);
     m_running = true;
-    m_sp_thread.reset(new std::thread(std::bind(&EventLoopThread::worker_threadFunc, this))); // 开启线程
+    m_sp_thread.reset(new std::thread(&EventLoopThread::worker_threadFunc, this)); // 开启线程
+    // m_sp_thread.reset(new std::thread(std::bind(&EventLoopThread::worker_threadFunc, this))); // 开启线程
     {
         std::unique_lock<std::mutex> guard(m_mtx);
         while(m_loop == nullptr) m_cond_var.wait(guard);
@@ -52,10 +54,10 @@ EventLoop* EventLoopThread::startLoop(){
 void EventLoopThread::stop(){
     if(!m_running) return;
     m_running = false;
-    if(m_loop){
+    if(m_loop)
         m_loop->quit();
-        m_sp_thread->join();
-    }
+    if(m_sp_thread)
+        m_sp_thread->join(); // 因为各个线程运行while(true)，导致析构Pool的时候join函数阻塞。
 }
 
 
@@ -66,11 +68,12 @@ void EventLoopThread::worker_threadFunc(){
     EventLoop loop;
     // 由于m_loop被主线程和当前线程读写，所以需要加锁
     {
-        std::lock_guard<std::mutex> guard(m_mtx);
+        std::unique_lock<std::mutex> guard(m_mtx);
         m_loop = &loop;
         m_cond_var.notify_one();
     }
     // 开启循环
     loop.loop();
     m_loop = nullptr;
+    // 线程快速退出，导致问题
 }

@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <iostream>
+
 #include "EventLoopThreadPool.h"
 #include "../Log/Logger.h"
 
@@ -29,13 +30,11 @@ EventLoopThreadPool::~EventLoopThreadPool(){
 void EventLoopThreadPool::stop(){
     if(!m_running) return;
     else{
+        LOG_INFO("Stop EventLoopThreadPool");
         for(int i = 0; i < m_threads.size(); i++){
-            if(m_threads[i]){
-                m_threads[i]->stop();
-            }
+            m_threads[i]->stop();
         }
     }
-    LOG_INFO("Stop EventLoopThreadPool");
 }
 
 // 如果没有，返回base_loop
@@ -60,5 +59,6 @@ void EventLoopThreadPool::start(){
         m_threads.push_back(sp_thread);
         m_loops.push_back(sp_thread->startLoop());
     }
+    LOG_INFO("EventLoopThreadPool Starts.");
 }
 

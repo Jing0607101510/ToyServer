@@ -16,7 +16,7 @@
 #include "../EventLoop/EventLoop.h"
 
 namespace CurrentThread{
-    extern __thread int t_cachedTid;
+    extern __thread int t_cachedTid; // 各个线程都有一份
     
     void cacheTid();
     inline int tid(){
