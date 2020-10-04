@@ -50,7 +50,7 @@ class Channel: public std::enable_shared_from_this<Channel>{
         Callback m_conn_handler;
         Callback m_error_handler;
 
-        std::weak_ptr<HttpData>  m_wk_holder;
+        std::weak_ptr<HttpData>  m_wk_holder; // 弱引用，不是shared_ptr
 
         __uint32_t m_events;
         __uint32_t m_revents;

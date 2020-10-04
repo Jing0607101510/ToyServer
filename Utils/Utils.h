@@ -32,5 +32,6 @@ bool is_dir_exists(char* dirname);
 bool create_dir(char* dirname);
 void setup_server(Config config);
 void sigterm_handler(int sig); // SIGTERM的信号处理函数
+int create_wakeup_fd();
 
 #endif

@@ -10,7 +10,6 @@
 #include "Utils/Utils.h"
 #include "EventLoop/EventLoop.h"
 
-EventLoop* g_base_loop = nullptr;
 
 int main(int argc, char* argv[]){
     // 读取配置

@@ -34,7 +34,7 @@ Server::~Server(){
     m_running = false;
     m_loop->quit(); // quit来关闭套接字？
     m_thread_pool->stop();
-    close(m_listen_fd);
+    close(m_listen_fd); // 由谁来关闭？loop中的poller吗？
     // TODO
 }
 
@@ -63,6 +63,7 @@ void Server::readHandler(){
         EventLoop* loop = m_thread_pool->getNextLoop();
         // 创建HttpData对象
         // 设置HttpData对象中的Channel的Holder
+        // 将这个HttpData加入到poller中，并且将它的channel加入到poller中保存
         // TODO
     }
 }

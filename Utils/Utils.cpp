@@ -16,11 +16,16 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <sys/eventfd.h>
 
 #include "Utils.h"
 #include "../Log/Logger.h"
 #include "../Config/Configure.h"
 #include "../ConnectionPool/ConnectionPool.h"
+
+
+// 定义
+EventLoop* g_base_loop = nullptr;
 
 
 // 创建socket，绑定地址，调用listen函数
@@ -203,14 +208,24 @@ void setup_server(Config config){
     // 设置信号处理函数
     register_sigaction(SIGPIPE, SIG_IGN);
     register_sigaction(SIGTERM, sigterm_handler); // 头文件中已经声明sigterm_handler函数
+    // SIGCHLD信号如何处理
 }
 
 
 
 void sigterm_handler(int sig){ // SIGTERM的信号处理函数
     if(g_base_loop){
-        g_base_loop->quit(); // 退出主循环
-        g_base_loop->wakeup(); 
+        g_base_loop->quit(); // 退出主循环，由quit函数负责是否调用wakeup函数 
         g_base_loop = nullptr;
     }
+}
+
+
+int create_wakeup_fd(){
+    int fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+    if(fd < 0){
+        LOG_ERROR("Failed to Create WakupFd.");
+        exit(-1);
+    }
+    return fd;
 }

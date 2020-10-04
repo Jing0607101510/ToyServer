@@ -28,7 +28,7 @@ class Server{
         EventLoop* m_loop;
         bool m_running;
         bool m_is_nolinger;
-        std::unique_ptr<EventLoopThreadPool> m_thread_pool;
+        std::unique_ptr<EventLoopThreadPool> m_thread_pool; // 只有一个
 };
 
 
