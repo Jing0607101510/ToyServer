@@ -106,7 +106,7 @@ void EventLoop::wakeup(){
     if (ret != sizeof(one)) {
         LOG_INFO("EventLoop::wakeup() writes %d bytes instead of 8", ret);
     }
-    std::cout << "进入wakeup" << std::endl;
+    // std::cout << "进入wakeup" << std::endl;
 }
 
 
