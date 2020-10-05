@@ -24,7 +24,7 @@ class Timer{
     private:
         time_t m_expired_time;
         bool m_deleted;
-        Callback m_cb_func;
+        Callback m_cb_func; // 绑定了回调函数所对应的对象的this指针，而不是shared_ptr;
 
 };
 

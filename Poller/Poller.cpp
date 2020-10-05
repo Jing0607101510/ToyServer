@@ -46,8 +46,8 @@ void Poller::getActiveChannels(int active_num, std::vector<std::shared_ptr<Chann
     for(int i = 0; i < active_num; i++){
         struct epoll_event event = m_epoll_events[i];
         Channel* pChannel = static_cast<Channel*>(event.data.ptr);
-        pChannel->setRevents(event.events);
-        activeChannels.push_back(pChannel->getSelf());
+        pChannel->setRevents(event.events); // 发生的事件
+        activeChannels.push_back(pChannel->getSelf()); // 由于epoll_event只能保存指针，但是vector保存的是shared_ptr,所以需要获取this的shared_ptr;
     }
     // 需要清空m_epoll_events吗？muduo没有.
 }

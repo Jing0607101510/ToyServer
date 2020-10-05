@@ -8,6 +8,7 @@
 #include <sys/epoll.h>
 #include <functional>
 #include <assert.h>
+#include <iostream>
 
 #include "EventLoop.h"
 #include "../Utils/Utils.h"
@@ -48,7 +49,17 @@ EventLoop::~EventLoop(){
 }
 
 void EventLoop::loop(){
-    sleep(5);
+    assertInLoopThread();
+    assert(!m_looping);
+    m_looping = true;
+    std::vector<std::shared_ptr<Channel>> active_channels;
+    while(m_looping){
+        active_channels.clear();
+        m_poller->poll(active_channels);
+        for(auto& active_channel : active_channels) active_channel->handleEvents();
+        doPendingFunctors();
+        handleExpired();
+    }
 }
 
 void EventLoop::quit(){
@@ -67,14 +78,25 @@ bool EventLoop::isInLoopThread(){
     return thread_id == CurrentThread::tid();
 }
 
-void EventLoop::queueInLoop(Functor&& func){
 
+void EventLoop::queueInLoop(Functor&& func){
+    // 由于需要和别的线程互斥访问pendingfunctors这个vector，所以需要加锁
+    // 传入右值，调用移动构造函数
+    {
+        std::lock_guard<std::mutex> guard(m_mtx);
+        m_pending_functors.emplace_back(func);
+    }
+    if(!isInLoopThread() || m_doing_pending) wakeup();
 }
 
 
 // 加入到Poller中监听
 void EventLoop::addToPoller(std::shared_ptr<Channel> sp_channel, int timeout){
-
+    if(timeout){
+        // 将计时器加入
+        // TODO
+    }
+    m_poller->addChannel(sp_channel);
 }
 
 // 向eventfd中写
@@ -84,19 +106,33 @@ void EventLoop::wakeup(){
     if (ret != sizeof(one)) {
         LOG_INFO("EventLoop::wakeup() writes %d bytes instead of 8", ret);
     }
+    std::cout << "进入wakeup" << std::endl;
 }
 
 
 void EventLoop::readHandler(){
-
+    uint64_t one = 1;
+    ssize_t ret = read(m_wakeup_fd, &one, sizeof(one));
+    if(ret != sizeof(one)){
+        LOG_INFO("EventLoop::readHandler() reads %d bytes instead of 8.", ret);
+    }
 }
 
 
 void EventLoop::doPendingFunctors(){
-
+    std::vector<Functor> functors;
+    m_doing_pending = true;
+    {
+        std::lock_guard<std::mutex> guard(m_mtx);
+        functors.swap(m_pending_functors);
+    }
+    for(auto& func : functors){
+        func();
+    }
+    m_doing_pending = false;
 }
 
 
 void EventLoop::handleExpired(){
-
+    m_timer_queue->handleExpiredTimers();
 }

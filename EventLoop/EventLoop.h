@@ -30,7 +30,7 @@ class EventLoop{
         bool isInLoopThread();
         void queueInLoop(Functor&& func);
         void addToPoller(std::shared_ptr<Channel> sp_channel, int timeout=0);
-    
+        void wakeup();
     private:
         int m_wakeup_fd;
         std::shared_ptr<Channel> m_wakeup_channel;
@@ -48,7 +48,7 @@ class EventLoop{
         std::shared_ptr<TimerQueue> m_timer_queue;
 
     private:
-        void wakeup();
+        
         void readHandler();
         void doPendingFunctors();
         void handleExpired();
