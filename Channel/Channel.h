@@ -10,7 +10,7 @@
 #include <memory>
 #include <functional>
 
-#include "../HttpData/HttpData.h"
+#include "../HttpConn/HttpConn.h"
 
 class Channel: public std::enable_shared_from_this<Channel>{
     public:
@@ -27,9 +27,10 @@ class Channel: public std::enable_shared_from_this<Channel>{
         void setWriteHandler(Callback&& write_handler);
         void setErrorHandler(Callback&& error_handler);
         void setConnHandler(Callback&& conn_handler);
+        void setCloseHandler(Callback&& close_handler);
 
-        void setHolder(std::shared_ptr<HttpData> holder);
-        std::shared_ptr<HttpData> getHolder();
+        void setHolder(std::shared_ptr<HttpConn> holder);
+        std::shared_ptr<HttpConn> getHolder();
 
         void setEvents(__uint32_t events);
         __uint32_t getEvents();
@@ -49,8 +50,9 @@ class Channel: public std::enable_shared_from_this<Channel>{
         Callback m_write_handler;
         Callback m_conn_handler;
         Callback m_error_handler;
+        Callback m_close_handler;
 
-        std::weak_ptr<HttpData>  m_wk_holder; // 弱引用，不是shared_ptr
+        std::weak_ptr<HttpConn>  m_wk_holder; // 弱引用，不是shared_ptr
 
         __uint32_t m_events;
         __uint32_t m_revents;

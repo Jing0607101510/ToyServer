@@ -49,11 +49,15 @@ void Channel::setConnHandler(Callback&& conn_handler){
     m_conn_handler = conn_handler;
 }
 
-void Channel::setHolder(std::shared_ptr<HttpData> holder){
+void setCloseHandler(Callback&& close_handler){
+    m_close_handler = close_handler;
+}
+
+void Channel::setHolder(std::shared_ptr<HttpConn> holder){
     m_wk_holder = holder;
 }
 
-std::shared_ptr<HttpData> Channel::getHolder(){
+std::shared_ptr<HttpConn> Channel::getHolder(){
     return m_wk_holder.lock();
 }
 
