@@ -66,6 +66,7 @@ class HttpConn{
         // 读写缓冲区
         std::string m_in_buf;
         std::string m_out_buf;
+        int m_read_idx;
         char* m_file_ptr;
         struct iovec m_iovec[2];
 
