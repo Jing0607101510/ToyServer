@@ -8,6 +8,7 @@
 #include <string.h>
 #include <strings.h>
 #include <errno.h> // errno每一线程都有一份
+#include <memory>
 
 #include "Poller.h"
 #include "../Log/Logger.h"
@@ -63,15 +64,26 @@ void Poller::addChannel(std::shared_ptr<Channel> channel){
         if(ret < 0){
             LOG_ERROR("Add Channel Error: %s.", strerror(errno));
         }
+        // 将Channel所对应的HttpConn的wk_ptr以shared_ptr的形式，加入到m_conns中
+        std::shared_ptr<HttpConn> sp_http_conn = channel->getHolder();
+        if(sp_http_conn){ // 有对应的HttpConn才加入，像listen_channel 和wakeup_channel没有对应的HttpConn，所以不加入
+            m_conn[sp_http_conn->getName()] = sp_http_conn;
+        }
     }
 }
 
 void Poller::delChannel(std::shared_ptr<Channel> channel){
     if(channel){
+        // 从epollfd中删除connfd
         int fd = channel->getFd();
         int ret = epoll_ctl(m_epoll_fd, EPOLL_CTL_DEL, fd, nullptr);
         if(ret < 0){
             LOG_ERROR("Del Channel Error: %s.", strerror(errno));
+        }
+        // 从m_conns中删除httpConn对象
+        std::shared_ptr<HttpConn> sp_http_conn = channel->getHolder();
+        if(sp_http_conn){
+            m_conn.erase(sp_http_conn->getName());
         }
     }
 }

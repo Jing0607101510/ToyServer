@@ -86,18 +86,52 @@ void EventLoop::queueInLoop(Functor&& func){
         std::lock_guard<std::mutex> guard(m_mtx);
         m_pending_functors.emplace_back(func);
     }
-    if(!isInLoopThread() || m_doing_pending) wakeup();
+    if(!isInLoopThread() || m_doing_pending) wakeup();// 将计时器加入
 }
 
 
 // 加入到Poller中监听
 void EventLoop::addToPoller(std::shared_ptr<Channel> sp_channel, int timeout){
-    if(timeout){
-        // 将计时器加入
-        // TODO
-    }
-    m_poller->addChannel(sp_channel);
+    if(sp_channel){
+        if(timeout){
+            // 将计时器加入
+            std::shared_ptr<HttpConn> sp_conn = sp_channel->getHolder();
+            auto callback = std::bind(&HttpConn::closeHandler, sp_conn.get());
+            std::shared_ptr<Timer> sp_timer(new Timer(timeout, callback));
+            sp_conn->setTimer(sp_timer); // 设置HttpConn的Timer
+            m_timer_queue->addTimer(sp_timer); // 将Timer加入到TimerQueue中
+        }
+        m_poller->addChannel(sp_channel);
+    }  
 }
+
+
+// 从Poller中去除
+void EventLoop::removeFromPoller(std::shared_ptr<Channel> sp_channel){
+    // 1.从epoll中删除对应的fd
+    // 2.从m_conns中删除对应的HttpConn对象
+    if(sp_channel){
+        m_poller->delChannel(sp_channel);
+    }
+}
+
+// 修改监听的事件
+void EventLoop::updatePoller(std::shared_ptr<Channel> sp_channel, int timeout){
+    // 设置原计时器无效，解除和对应HttpConn对象的关系（这个处理由HttpConn对象处理）
+    // 创建新的计时器，绑定到HttpConn对象中，加入到timerQueue中
+    // 将Channel修改到epoll中
+    if(sp_channel){
+        if(timeout){
+            std::shared_ptr<HttpConn> sp_conn = sp_channel->getHolder();
+            auto callback = std::bind(&HttpConn::closeHandler, sp_conn.get());
+            std::shared_ptr<Timer> sp_timer(new Timer(timeout, callback));
+            sp_conn->setTimer(sp_timer);
+            m_timer_queue->addTimer(sp_tiemr);
+        }
+        m_poller->modChannel(sp_channel);
+    }
+}
+
 
 // 向eventfd中写
 void EventLoop::wakeup(){

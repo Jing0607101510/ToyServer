@@ -15,7 +15,7 @@
 class Timer{
     public:
         typedef std::function<void()> Callback;
-        Timer(time_t expired_time, Callback&& cb_func);
+        Timer(int timeout, Callback&& cb_func);
         ~Timer();
         bool isExpired(time_t now);
         bool isDeleted();

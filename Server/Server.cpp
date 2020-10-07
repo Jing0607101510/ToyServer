@@ -11,6 +11,7 @@
 #include "Server.h"
 #include "../Utils/Utils.h"
 #include "../Log/Logger.h"
+#include "../HttpConn/HttpConn.h"
 
 Server::Server(Config config, EventLoop* loop):
     m_listen_fd(socket_bind_listen(config.server_port)),
@@ -24,7 +25,6 @@ Server::Server(Config config, EventLoop* loop):
     if(!set_sock_reuse_port(m_listen_fd)) abort();
 
     m_listen_channel->setReadHandler(std::bind(&Server::readHandler, this));
-    m_listen_channel->setConnHandler(std::bind(&Server::connHandler, this));
     m_listen_channel->setEvents(EPOLLIN | EPOLLET); // 读事件 和 边缘触发
 }
 
@@ -63,11 +63,11 @@ void Server::readHandler(){
         EventLoop* loop = m_thread_pool->getNextLoop();
         // 创建HttpData对象
         // 设置HttpData对象中的Channel的Holder
-        // 将这个HttpData加入到poller中，并且将它的channel加入到poller中保存
-        // TODO
+        // 以IP:Port为连接名
+        std::string conn_name = std::string(inet_ntoa(client_addr.sin_addr)) + std::to_string(ntohs(client_addr.sin_port));
+        std::shared_ptr<HttpConn> http_conn(new HttpConn(loop, connfd, conn_name));
+        http_conn->getChannel()->setHolder(http_conn);
+        // 将这个HttpData加入到poller中，并且将它的channel加入到poller中监听
+        loop->queueInLoop(std::bind(&HttpConn::newConn, http_conn));
     }
-}
-
-void Server::connHandler(){
-    // TODO
 }

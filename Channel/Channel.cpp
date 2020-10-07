@@ -45,9 +45,6 @@ void Channel::setErrorHandler(Callback&& error_handler){
     m_error_handler = error_handler;
 }
 
-void Channel::setConnHandler(Callback&& conn_handler){
-    m_conn_handler = conn_handler;
-}
 
 void setCloseHandler(Callback&& close_handler){
     m_close_handler = close_handler;
@@ -99,11 +96,6 @@ void Channel::handleWrite(){
     }
 }
 
-void Channel::handleConn(){
-    if(m_conn_handler){
-        m_conn_handler();
-    }
-}
 
 void Channel::handleError(){
     if(m_error_handler){

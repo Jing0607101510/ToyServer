@@ -29,8 +29,11 @@ class EventLoop{
         void assertInLoopThread();
         bool isInLoopThread();
         void queueInLoop(Functor&& func);
+        // EventLoop 操作的是Channel
         void addToPoller(std::shared_ptr<Channel> sp_channel, int timeout=0);
-        
+        void removeFromPoller(std::shared_ptr<Channel> sp_channel);
+        void updatePoller(std::shared_ptr<Channel> sp_channel, int timeout=0);
+
     private:
         int m_wakeup_fd;
         std::shared_ptr<Channel> m_wakeup_channel;

@@ -20,7 +20,6 @@ class Server{
         ~Server();
         void start();
         void readHandler();
-        void connHandler();
 
     private:
         int m_listen_fd;

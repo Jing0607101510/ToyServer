@@ -6,10 +6,14 @@
 
 #include "Timer.h"
 
-Timer::Timer(time_t expired_time, Callback&& cb_func):
+Timer::Timer(int timeout, Callback&& cb_func):
             m_expired_time(expired_time), 
             m_cb_func(cb_func),
-            m_deleted(false){}
+            m_deleted(false)
+{
+    time_t now = time(nullptr);
+    m_expired_time = now + timeout;
+}
 
 Timer::~Timer(){
     if(m_cb_func){

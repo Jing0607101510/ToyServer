@@ -26,7 +26,6 @@ class Channel: public std::enable_shared_from_this<Channel>{
         void setReadHandler(Callback&& read_handler);
         void setWriteHandler(Callback&& write_handler);
         void setErrorHandler(Callback&& error_handler);
-        void setConnHandler(Callback&& conn_handler);
         void setCloseHandler(Callback&& close_handler);
 
         void setHolder(std::shared_ptr<HttpConn> holder);
@@ -48,7 +47,6 @@ class Channel: public std::enable_shared_from_this<Channel>{
 
         Callback m_read_handler;
         Callback m_write_handler;
-        Callback m_conn_handler;
         Callback m_error_handler;
         Callback m_close_handler;
 

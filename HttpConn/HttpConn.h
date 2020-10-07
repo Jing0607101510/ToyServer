@@ -19,7 +19,7 @@ enum METHOD{
     GET = 0,
     HEAD,
     POST,
-    OTHER // 其他不支持的方法
+    OTHERS // 其他不支持的方法
 }
 
 enum VERSION{
@@ -35,13 +35,14 @@ enum CHECK_STATE{
 
 enum HTTP_CODE{
     NO_REQUEST = 0,
-    GET_REQUEST,
-    BAD_REQUEST,
-    NO_RESOURCE,
-    FORBIDDEN_REQUEST,
-    FILE_REQUEST,
-    INTERNAL_ERROR, 
-    CLOSED_CONNECTION
+    GET_REQUEST, // 200
+    BAD_REQUEST, // 400
+    NO_RESOURCE, // 404
+    FORBIDDEN_REQUEST, //403
+    FILE_REQUEST, // 200
+    INTERNAL_ERROR, // 500
+    CLOSED_CONNECTION, // 
+    NOT_IMPLEMENTED // 501
 }
 
 enum LINE_STATE{
@@ -51,11 +52,17 @@ enum LINE_STATE{
 }
 
 
-class HttpConn{
+class HttpConn : public std::enable_shared_from_this<HttpConn>{
     public:
-        HttpConn();
+        HttpConn(EventLoop* loop, int conn_fd, std::string&& conn_name);
         ~HttpConn();
         void setTimer(std::shared_ptr<Timer> timer);
+        std::string getName();
+        std::shared_ptr<Channel> getChannel();
+        // 在Server中绑定这个函数，加入到相应的loop的pendingFunctors中
+        void newConn(); 
+
+        void closeHandler();
 
     private:
         EventLoop* m_loop;
@@ -64,9 +71,9 @@ class HttpConn{
         int m_conn_fd;
 
         // 读写缓冲区
-        std::string m_in_buf;
-        std::string m_out_buf;
-        int m_read_idx;
+        std::string m_inbuff;
+        std::string m_outbuff;
+        int m_read_idx; // 记录读取到读缓冲的哪一个位置，因为行不完整的原因
         char* m_file_ptr;
         struct iovec m_iovec[2];
 
@@ -78,30 +85,32 @@ class HttpConn{
         VERSION m_version;
         std::string m_filename;
         std::string m_path;
-        std::map<std::string, std::string> m_header;
+        std::map<std::string, std::string> m_headers;
         bool m_keep_alive;
+        std::string m_content;
 
         // 主状态机状态
-        CHECK_STATE m_check_state;
+        CHECK_STATE m_check_state; // 当前处在什么状态，做什么事情，导致状态转移
 
     private:
-        void readHandler();
-        void writeHandler();
-        void closeHandler();
-        void errorHandler();
-        void connHandler();
 
         bool read();
         bool write();
         
-        LINE_STATE parse_line();
-        HTTP_CODE analyse_request();
-        HTTP_CODE parse_request_line();
-        HTTP_CODE parse_headers();
-        HTTP_CODE parse_content();
-        HTTP_CODE do_request();
+        LINE_STATE parseLine();
+        HTTP_CODE analyseRequest();
+        bool sendResponse(HTTP_CODE code);
+        HTTP_CODE parseRequestLine();
+        HTTP_CODE parseHeaders();
+        HTTP_CODE parseContent();
+        HTTP_CODE doRequest();
 
         void reset();
+
+        void readHandler();
+        void writeHandler();
+        void errorHandler();
+
 };
 
 
