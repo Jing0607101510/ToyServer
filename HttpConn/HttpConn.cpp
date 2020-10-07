@@ -49,9 +49,25 @@ void HttpConn::readHandler(){
         if(m_keep_alive)
             timeout = DEFAULT_KEEP_ALIVE_TIME;
         m_loop->updatePoller(m_channel, timeout);
+        return;
     }
-    ret = sendResponse(analyse_ret);
-    if(!ret)
+    // 返回值应该区分：1.写失败，2.全部写完成，3.部分写，还需监听写
+    ret = sendResponse(analyse_ret); // 只是写到写缓冲区
+    if(!ret) closeHandler();
+
+    WRITE_RESULT write_result = write();
+    if(write_result == WRITE_ERROR) closeHandler();
+    else if(write_result == WRITE_PART){
+        m_channel->setEvents(EPOLLOUT | EPOLLET);
+        int timeout = DEFAULT_EXPIRED_TIME;
+        if(m_keep_alive)
+            timeout = DEFAULT_KEEP_ALIVE_TIME;
+        m_loop->updatePoller(m_channel, timeout);
+    }
+    else{ // FIXME: 这里的错误状态要在下一个write可见，不应该用analyse_ret来比较
+        if(analyse_ret != GET_REQUEST) 
+            closeHandler();
+    }
     // TODO
 }
 

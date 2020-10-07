@@ -51,6 +51,11 @@ enum LINE_STATE{
     LINE_AGAIN
 }
 
+enum WRITE_RESULT{
+    WRITE_ALL = 0,
+    WRITE_PART,
+    WRITE_ERROR
+}
 
 class HttpConn : public std::enable_shared_from_this<HttpConn>{
     public:
