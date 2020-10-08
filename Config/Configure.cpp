@@ -26,7 +26,8 @@ void Config::parse_args(int argc, char* argv[]){ // 设置参数
         {"min_num_conn", required_argument, NULL, 'i'},
         {"max_num_conn", required_argument, NULL, 'x'},
         {"db_name", required_argument, NULL, 'm'},
-        {"no_linger", no_argument, NULL, 'g'}
+        {"no_linger", no_argument, NULL, 'g'},
+        {"server_root", required_argument, NULL, 's'}
     };
 
     while((opt = getopt_long(argc, argv, opt_str, long_options, &option_index)) != -1){
@@ -61,6 +62,8 @@ void Config::parse_args(int argc, char* argv[]){ // 设置参数
             case 'r' :
                 db_url = optarg;
                 break;
+            case 's' :
+                server_root = optarg;
             case 't' :
                 num_thread = atoi(optarg);
                 break;
@@ -93,6 +96,7 @@ Config::Config(){ // 默认方式初始化参数
     num_thread = 8;
     run_backend = false;
     no_linger = false;
+    server_root = "root";
 
     enable_logging = false;
     log_file_name = "logs/log/log";

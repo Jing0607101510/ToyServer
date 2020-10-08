@@ -12,6 +12,8 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <mysql/mysql.h>
+#include <ctype.h>
+#include <algorithm>
 
 #include "HttpConn.h"
 #include "../Log/Logger.h"
@@ -66,7 +68,7 @@ const std::map<std::string, std::string> mime = {
 
 
 
-HttpConn::HttpConn(EventLoop* loop, int conn_fd, std::string&& conn_name):
+HttpConn::HttpConn(EventLoop* loop, int conn_fd, std::string&& conn_name, std::string path):
     m_loop(loop),
     m_conn_fd(conn_fd),
     m_channel(new Channel(conn_fd)),
@@ -74,7 +76,8 @@ HttpConn::HttpConn(EventLoop* loop, int conn_fd, std::string&& conn_name):
     m_read_idx(0),
     m_check_state(CHECK_STATE_REQUESTLINE),
     m_error_exist(false),
-    m_file_category("text/html")
+    m_file_category("text/html"),
+    m_path(path)
 {
     m_channel->setEvents(EPOLLET | EPOLLIN);
     m_channel->setReadHandler(std::bind(&HttpConn::readHandler, this));
@@ -413,6 +416,10 @@ HTTP_CODE HttpConn::parseHeaders(){
 
     // 如果是空行
     if(header == ""){
+        m_keep_alive = false;
+        if(m_headers.find("connection") != m_headers.end()){
+            m_keep_alive = (m_headers["connection"] == "close" ? false : true);
+        }
         if(m_method == POST){ // 如果是POST方法，还需要接收content
             m_check_state = CHECK_STATE_CONTENT;
             return NO_REQUEST;
@@ -424,7 +431,9 @@ HTTP_CODE HttpConn::parseHeaders(){
         if(colon_pos == std::string::npos)
             return BAD_REQUEST;
         std::string key = header.substr(0, colon_pos);
+        ttransform(key.begin(), key.end(), key.begin(), ::tolower);
         std::string value = header.substr(colon_pos + 2);
+        transform(value.begin(), value.end(), value.begin(), ::tolower);
         m_headers[key] = value;
         return NO_REQUEST;
     }
@@ -433,7 +442,7 @@ HTTP_CODE HttpConn::parseHeaders(){
 HTTP_CODE HttpConn::parseContent(){
     if(m_headers.find("content-length") == m_headers.end())
         return BAD_REQUEST;
-    int content_len = m_headers.find("content-length");
+    int content_len = atoi(m_headers.find("content-length"));
     if(m_inbuff.size() >= content_len){
         m_content = m_inbuff.substr(0, content_len);
         m_inbuff.erase(0, content_len); // 清楚前面已经处理的部分
@@ -469,6 +478,7 @@ HTTP_CODE HttpConn::doRequest(){
             MYSQL_ROW row = mysql_fetch_row(result);
             bool exist = bool(atoi(row[0]));
 
+            m_file_category = "text/html";
             if(m_filename == "login.cgi"){
                 if(exist){
                     m_filename = "success.html";
@@ -517,6 +527,14 @@ HTTP_CODE HttpConn::doRequest(){
             return INTERNAL_ERROR;
         }
         close(fd);
+
+        int dot_pos = m_filename.rfind(".");
+        if(dot_pos == std::string::npos){
+            m_file_category = mime["default"];
+        }
+        else{
+            m_file_category = mime[m_filename.substr(dot_pos)];
+        }
         return FILE_REQUEST;
     }
     else{
@@ -529,9 +547,8 @@ HTTP_CODE HttpConn::doRequest(){
 void HttpConn::reset(){
     // 其他需要在一次请求的完成后清空的内容，注意是请求完成后
     m_filename.clear();
-    // m_path.clear(); // path设置为恒定的。
     m_headers.clear();
-    m_keep_alive = false; // FIXME: 哪里能够设置这个？以及文件类型？
+    m_keep_alive = false; // DONE: 哪里能够设置这个？以及文件类型？ keep_alive在读完header后分析， 文件类型在do_request()处设置
     m_file_category = "text/html";
     m_version = HTTP11; 
     m_method = GET; 
@@ -544,7 +561,11 @@ void HttpConn::reset(){
         m_file_size = 0;
     }
     m_file_size = 0;
-    // TODO: 可能还需要添加
+    m_iovec[0].iov_base = nullptr;
+    m_iovec[0].iov_len = 0;
+    m_iovec[1].iov_base = nullptr;
+    m_iovec[1].iov_len = 0;
+    // DONE: 可能还需要添加
     seperateTimer();
 }
 

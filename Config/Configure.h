@@ -18,6 +18,7 @@ class Config{
         int num_thread;  // -t
         bool run_backend; // 是否以服务形式运行 //-b
         bool no_linger;
+        std::string server_root;
 
         // 日志系统相关
         bool enable_logging; // -l

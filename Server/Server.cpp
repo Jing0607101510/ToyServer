@@ -19,7 +19,8 @@ Server::Server(Config config, EventLoop* loop):
     m_loop(loop),
     m_running(false),
     m_is_nolinger(config.no_linger),
-    m_thread_pool(new EventLoopThreadPool(loop, config.num_thread))
+    m_thread_pool(new EventLoopThreadPool(loop, config.num_thread)),
+    m_server_root(config.server_root)
 {   
     if(!set_sock_non_blocking(m_listen_fd)) abort();
     if(!set_sock_reuse_port(m_listen_fd)) abort();
@@ -34,7 +35,7 @@ Server::~Server(){
     m_running = false;
     m_loop->quit(); // quit来关闭套接字？
     m_thread_pool->stop();
-    close(m_listen_fd); // 由谁来关闭？loop中的poller吗？
+    close(m_listen_fd); // 由谁来关闭？loop中的poller吗？属于谁的，就谁来关
     // TODO
 }
 
@@ -65,7 +66,7 @@ void Server::readHandler(){
         // 设置HttpData对象中的Channel的Holder
         // 以IP:Port为连接名
         std::string conn_name = std::string(inet_ntoa(client_addr.sin_addr)) + std::to_string(ntohs(client_addr.sin_port));
-        std::shared_ptr<HttpConn> http_conn(new HttpConn(loop, connfd, conn_name));
+        std::shared_ptr<HttpConn> http_conn(new HttpConn(loop, connfd, conn_name, m_server_root));
         http_conn->getChannel()->setHolder(http_conn);
         // 将这个HttpData加入到poller中，并且将它的channel加入到poller中监听
         loop->queueInLoop(std::bind(&HttpConn::newConn, http_conn));

@@ -21,18 +21,18 @@ enum METHOD{
     HEAD,
     POST,
     OTHERS // 其他不支持的方法
-}
+};
 
 enum VERSION{
     HTTP10 = 0,
     HTTP11
-}
+};
 
 enum CHECK_STATE{
     CHECK_STATE_REQUESTLINE = 0,
     CHECK_STATE_HEADER,
     CHECK_STATE_CONTENT
-}
+};
 
 enum HTTP_CODE{
     NO_REQUEST = 0,
@@ -44,19 +44,19 @@ enum HTTP_CODE{
     INTERNAL_ERROR, // 500
     CLOSED_CONNECTION, // 
     NOT_IMPLEMENTED // 501
-}
+};
 
 enum LINE_STATE{
     LINE_OK = 0,
     LINE_BAD,
     LINE_AGAIN
-}
+};
 
 enum WRITE_RESULT{
     WRITE_ALL = 0,
     WRITE_PART,
     WRITE_ERROR
-}
+};
 
 class HttpConn : public std::enable_shared_from_this<HttpConn>{
     public:
