@@ -35,11 +35,11 @@ enum CHECK_STATE{
 
 enum HTTP_CODE{
     NO_REQUEST = 0,
-    GET_REQUEST, // 200
+    GET_REQUEST, // 200 正常
     BAD_REQUEST, // 400
     NO_RESOURCE, // 404
     FORBIDDEN_REQUEST, //403
-    FILE_REQUEST, // 200
+    FILE_REQUEST, // 200 正常
     INTERNAL_ERROR, // 500
     CLOSED_CONNECTION, // 
     NOT_IMPLEMENTED // 501
@@ -92,7 +92,9 @@ class HttpConn : public std::enable_shared_from_this<HttpConn>{
         std::string m_path;
         std::map<std::string, std::string> m_headers;
         bool m_keep_alive;
+        int m_file_size;
         std::string m_content;
+        bool m_error_exist;
 
         // 主状态机状态
         CHECK_STATE m_check_state; // 当前处在什么状态，做什么事情，导致状态转移
@@ -111,10 +113,19 @@ class HttpConn : public std::enable_shared_from_this<HttpConn>{
         HTTP_CODE doRequest();
 
         void reset();
+        void seperateTimer();
 
         void readHandler();
         void writeHandler();
         void errorHandler();
+
+        void add_content(sting content);
+        void add_status_line(int status);
+        void add_headers(string header, string value);
+        void add_content_type();
+        void add_content_length();
+        void add_linger(); // linger的用处？
+        void add_blank_line();
 
 };
 

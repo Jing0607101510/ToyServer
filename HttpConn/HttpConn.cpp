@@ -8,6 +8,9 @@
 #include <sys/socket.h>
 #include <errno.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 
 #include "HttpConn.h"
 #include "../Log/Logger.h"
@@ -16,13 +19,50 @@ const int DEFAULT_EXPIRED_TIME = 2; // ms
 const int DEFAULT_KEEP_ALIVE_TIME = 5 * 60; // ms
 const int MAX_BUFF_SIZE = 1024;
 
+const std::map<int, std::string> response_desc = {
+    {200, "OK"},
+    {400, "Bad Request"},
+    {403, "Forbidden"},
+    {404, "Not Found"},
+    {500, "Internal Error"},
+    {501, "Not Implemented"}
+};
+
+const std::map<int, std::string> response_content = {
+    {400, "Your request has bad syntax or is inherently impossible to staisfy.\n"},
+    {403, "You do not have permission to get file form this server.\n"},
+    {404, "The requested file was not found on this server.\n"},
+    {500, "There was an unusual problem serving the request file.\n"},
+    {501, "THe request method is not implememted!\n"}
+};
+
+const std::map<std::string, std::string> mime = {
+    {".html", "text/html"},
+    {".avi", "video/x-msvideo"},
+    {".bmp", "image/bmp"},
+    {".c", "text/plain"},
+    {".doc", "application/msword"},
+    {".gif", "image/gif"},
+    {".gz", "application/x-gzip"},
+    {".htm", "text/html"},
+    {".ico", "image/x-icon"},
+    {".jpg", "image/jpeg"},
+    {".png", "image/png"},
+    {".txt", "text/plain"},
+    {".mp3", "audio/mp3"},
+    {"default", "text/html"}
+};
+
+
+
 HttpConn::HttpConn(EventLoop* loop, int conn_fd, std::string&& conn_name):
     m_loop(loop),
     m_conn_fd(conn_fd),
     m_channel(new Channel(conn_fd)),
     m_conn_name(conn_name),
     m_read_idx(0),
-    m_check_state(CHECK_STATE_REQUESTLINE)
+    m_check_state(CHECK_STATE_REQUESTLINE),
+    m_error_exist(false)
 {
     m_channel->setEvents(EPOLLET | EPOLLIN);
     m_channel->setReadHandler(std::bind(&HttpConn::readHandler, this));
@@ -39,7 +79,10 @@ HttpConn::~HttpConn(){
 void HttpConn::readHandler(){
     // 先读取数据
     bool ret = read();
-    if(!ret) closeHandler(); // 若出错或者对端关闭，则关闭fd
+    if(!ret){
+        closeHandler(); // 若出错或者对端关闭，则关闭fd
+        return;
+    }
     // 对数据进行处理
     HTTP_CODE analyse_ret = analyseRequest();
     // 对不同的HTTP_CODE进行处理
@@ -48,31 +91,49 @@ void HttpConn::readHandler(){
         int timeout = DEFAULT_EXPIRED_TIME;
         if(m_keep_alive)
             timeout = DEFAULT_KEEP_ALIVE_TIME;
+        seperateTimer();
         m_loop->updatePoller(m_channel, timeout);
         return;
-    }
-    // 返回值应该区分：1.写失败，2.全部写完成，3.部分写，还需监听写
-    ret = sendResponse(analyse_ret); // 只是写到写缓冲区
-    if(!ret) closeHandler();
+    } 
+    if(analyse_ret != GET_REQUEST) m_error_exist = true; // 报文分析错误，或者请求的内容错误
 
-    WRITE_RESULT write_result = write();
-    if(write_result == WRITE_ERROR) closeHandler();
-    else if(write_result == WRITE_PART){
-        m_channel->setEvents(EPOLLOUT | EPOLLET);
-        int timeout = DEFAULT_EXPIRED_TIME;
-        if(m_keep_alive)
-            timeout = DEFAULT_KEEP_ALIVE_TIME;
-        m_loop->updatePoller(m_channel, timeout);
+    ret = sendResponse(analyse_ret); // 只是写到写缓冲区
+    if(!ret){
+        closeHandler();
+        return;
     }
-    else{ // FIXME: 这里的错误状态要在下一个write可见，不应该用analyse_ret来比较
-        if(analyse_ret != GET_REQUEST) 
-            closeHandler();
-    }
-    // TODO
+    
+    writeHandler();
 }
 
 void HttpConn::writeHandler(){
-
+    // 返回值应该区分：1.写失败，2.全部写完成，3.部分写，还需监听写
+    WRITE_RESULT write_result = write(); // 从缓冲区写入网络中
+    if(write_result == WRITE_ERROR) closeHandler();
+    else if(write_result == WRITE_PART){
+        m_channel->setEvents(EPOLLOUT | EPOLLET);
+        int timeout = DEFAULT_EXPIRED_TIME; // 什么时候修改定时器？答：调用updatePoler时。所以先要解除原TImer和HttpConn的关系
+        if(m_keep_alive)
+            timeout = DEFAULT_KEEP_ALIVE_TIME;
+        seperateTimer();
+        m_loop->updatePoller(m_channel, timeout);
+    }
+    else{ // DONE: 这里的错误状态要在下一个write可见，不应该用analyse_ret来比较
+        // 全部数据写完到网络中，重新设定计时器？
+        // 什么时机设置计时器？答：每一次触发就修改超时时间
+        if(m_error_exist) 
+            closeHandler();
+        else // 由于数据写完，所以设置IN事件，开启接收新的请求
+        {
+            m_channel->setEvents(EPOLLIN | EPOLLET);
+            int timeout = DEFAULT_EXPIRED_TIME;
+            if(m_keep_alive)
+                timeout = DEFAULT_KEEP_ALIVE_TIME;
+            seperateTimer();
+            reset(); // 重新设置某些参数，开始接收新的请求报文
+            m_loop->updatePoller(m_channel, timeout);
+        }
+    }
 }
 
 void HttpConn::closeHandler(){
@@ -87,7 +148,7 @@ void HttpConn::closeHandler(){
 
 
 void HttpConn::errorHandler(){
-
+    // TODO: 错误处理
 }
 
 
@@ -136,12 +197,12 @@ bool HttpConn::read(){
 
 
 bool HttpConn::write(){
-    
+    // TODO: 非阻塞写数据
 }
 
-// 将需要发送的数据写入缓冲区，并且尝试发送
+// 将需要发送的数据写入写缓冲区（进程空间）
 bool HttpConn::sendResponse(HTTP_CODE code){
-
+    // TODO: 将发送的内容加入到写缓冲
 }
 
 
@@ -311,26 +372,86 @@ HTTP_CODE HttpConn::parseContent(){
 
 
 HTTP_CODE HttpConn::doRequest(){
-
+    // TODO: 根据GET、POST、HEAD请求，做出相应的操作，返回相应的结果，GET、HEAD主要判断文件是否存在
+    std::string full_filename = m_path + "/" + m_filename;
+    if(m_method == POST){
+        
+    }
+    else if(m_method == GET || m_method == HEAD){
+        struct stat st;
+        int ret = stat(full_filename.c_str(), &st);
+        if(ret < 0) return NO_RESOURCE; // 不存在这个文件
+        if(!(st.st_mode & S_IROTH)) return FORBIDDEN_REQUEST; // 没有权限
+        if(S_ISDIR(st.st_mode)) return BAD_REQUEST; // 请求的是一个目录
+        // 正常的请求
+        if(m_method == HEAD) return FILE_REQUEST;
+        m_file_size = st.st_size;
+        int fd = open(full_filename.c_str(), O_RDONLY);
+        m_file_ptr = (char*)mmap(0, m_file_size, PROT_READ, MAP_PRIVATE, fd, 0);
+        if(m_file_ptr == (char*)(-1)){
+            munmap((void*)m_file_ptr, m_file_size);
+            LOG_ERROR("HttpConn::doRequest() mmap Error.");
+            return INTERNAL_ERROR;
+        }
+        close(fd);
+        return FILE_REQUEST;
+    }
+    else{
+        return NOT_IMPLEMENTED;
+    }
 }
 
 // 设置对应的Timer的delete标志为true，设置对应的Callback为nullptr
 // 设置m_timer成员reset
 void HttpConn::reset(){
-    // TODO 
-    // 其他需要在一次请求的完成后清空的内容
+    // 其他需要在一次请求的完成后清空的内容，注意是请求完成后
     m_filename.clear();
-    m_path.clear();
+    // m_path.clear(); // path设置为恒定的。
     m_headers.clear();
     m_keep_alive = false;
     m_version = HTTP11;
     m_method = GET;
     m_check_state = CHECK_STATE_REQUESTLINE;
     m_content.clear();
-    // TODO 
-    // 可能还需要添加
+    m_error_exist = false;
+    m_file_size = 0;
+    m_file_ptr = nullptr;
+    // TODO: 可能还需要添加
+    seperateTimer();
+}
+
+void HttpConn::seperateTimer(){
     if(m_timer){
         m_timer->setDeleted();
         m_timer.reset();
     }
+}
+
+
+void HttpConn::add_content(string content){
+    m_outbuff += content;
+}
+
+void HttpConn::add_status_line(int status){
+
+}
+
+void HttpConn::add_headers(string header, string value){
+
+}
+
+void HttpConn::add_content_type(){
+
+}
+
+void HttpConn::add_content_length(){
+
+}
+
+void HttpConn::add_linger(){ // linger的用处?
+
+}
+
+void HttpConn::add_blank_line(){
+    m_outbuff += "\r\n";
 }

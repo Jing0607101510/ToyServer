@@ -110,6 +110,8 @@ void EventLoop::addToPoller(std::shared_ptr<Channel> sp_channel, int timeout){
 void EventLoop::removeFromPoller(std::shared_ptr<Channel> sp_channel){
     // 1.从epoll中删除对应的fd
     // 2.从m_conns中删除对应的HttpConn对象
+    // 以上两个操作都由poller来完成
+    // 实际上应该从timerQueue中删除timer，但是使用延迟删除
     if(sp_channel){
         m_poller->delChannel(sp_channel);
     }
