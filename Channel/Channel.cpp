@@ -41,9 +41,6 @@ void Channel::setWriteHandler(Callback&& write_handler){
     m_write_handler = write_handler;
 }
 
-void Channel::setErrorHandler(Callback&& error_handler){
-    m_error_handler = error_handler;
-}
 
 
 void setCloseHandler(Callback&& close_handler){

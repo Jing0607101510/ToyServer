@@ -75,7 +75,7 @@ class ConnectionPool{
 
 class ConnectionRAII{
     public:
-        ConnectionRAII(MYSQL** conn, ConnectionPool* pool);
+        ConnectionRAII(MYSQL** conn);
         ~ConnectionRAII(); // 析构时归还
     private:
         MYSQL* conn;

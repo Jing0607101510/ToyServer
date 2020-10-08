@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <map>
+#include <sys/uio.h>
 
 #include "../Timer/Timer.h"
 #include "../EventLoop/EventLoop.h"
@@ -93,6 +94,7 @@ class HttpConn : public std::enable_shared_from_this<HttpConn>{
         std::map<std::string, std::string> m_headers;
         bool m_keep_alive;
         int m_file_size;
+        std::string m_file_category;
         std::string m_content;
         bool m_error_exist;
 
@@ -102,7 +104,7 @@ class HttpConn : public std::enable_shared_from_this<HttpConn>{
     private:
 
         bool read();
-        bool write();
+        WRITE_RESULT write();
         
         LINE_STATE parseLine();
         HTTP_CODE analyseRequest();
@@ -117,15 +119,11 @@ class HttpConn : public std::enable_shared_from_this<HttpConn>{
 
         void readHandler();
         void writeHandler();
-        void errorHandler();
 
-        void add_content(sting content);
-        void add_status_line(int status);
-        void add_headers(string header, string value);
-        void add_content_type();
-        void add_content_length();
-        void add_linger(); // linger的用处？
-        void add_blank_line();
+        
+        void add_status_line(HTTP_CODE code);
+        void add_headers(HTTP_CODE code);
+        void add_content(HTTP_CODE code);
 
 };
 

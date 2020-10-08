@@ -114,7 +114,7 @@ void ConnectionPool::destroy_pool(){
     // 以下只是对空闲的连接销毁。
     if(!running){
         std::lock_guard<std::mutex> guard(conn_mtx);
-        reduce_pool(conns.size());
+        reduce_pool(conns.size()); // 在这里关闭连接
         // while(conns.size()){
         //     MYSQL* conn = conns.back();
         //     conns.pop_back();
@@ -129,7 +129,7 @@ void ConnectionPool::destroy_pool(){
 void ConnectionPool::expand_pool(int size){ 
     if(running)
         for(int i = 0; i < size; i++){
-            MYSQL* conn = nullptr;
+            MYSQL* conn = nullptr; // 一定要先初始化为nullptr
             conn = mysql_init(conn);
             if(conn == nullptr){
                 LOG_ERROR("MYSQL Init Error.");
@@ -220,7 +220,7 @@ void ConnectionPool::retConnection(MYSQL* conn){
 
 
 
-ConnectionRAII::ConnectionRAII(MYSQL** conn, ConnectionPool* pool){
+ConnectionRAII::ConnectionRAII(MYSQL** conn){
     *conn = ConnectionPool::getInstance().getConnection();
     this->conn = *conn;
 }

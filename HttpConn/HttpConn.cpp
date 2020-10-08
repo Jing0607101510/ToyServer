@@ -11,29 +11,40 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <mysql/mysql.h>
 
 #include "HttpConn.h"
 #include "../Log/Logger.h"
+#include "../ConnectionPool/ConnectionPool.h"
 
 const int DEFAULT_EXPIRED_TIME = 2; // ms
 const int DEFAULT_KEEP_ALIVE_TIME = 5 * 60; // ms
 const int MAX_BUFF_SIZE = 1024;
 
-const std::map<int, std::string> response_desc = {
-    {200, "OK"},
-    {400, "Bad Request"},
-    {403, "Forbidden"},
-    {404, "Not Found"},
-    {500, "Internal Error"},
-    {501, "Not Implemented"}
+const std::map<HTTP_CODE, int> status_code = {
+    {FILE_REQUEST, 200},
+    {BAD_REQUEST, 400},
+    {FORBIDDEN_REQUEST, 403},
+    {NO_RESOURCE, 404},
+    {INTERNAL_ERROR, 500},
+    {NOT_IMPLEMENTED, 501}
 };
 
-const std::map<int, std::string> response_content = {
-    {400, "Your request has bad syntax or is inherently impossible to staisfy.\n"},
-    {403, "You do not have permission to get file form this server.\n"},
-    {404, "The requested file was not found on this server.\n"},
-    {500, "There was an unusual problem serving the request file.\n"},
-    {501, "THe request method is not implememted!\n"}
+const std::map<HTTP_CODE, std::string> status_desc = {
+    {FILE_REQUEST, "OK"},
+    {BAD_REQUEST, "Bad Request"},
+    {FORBIDDEN_REQUEST, "Forbidden"},
+    {NO_RESOURCE, "Not Found"},
+    {INTERNAL_ERROR, "Internal Error"},
+    {NOT_IMPLEMENTED, "Not Implemented"}
+};
+
+const std::map<HTTP_CODE, std::string> response_content = {
+    {BAD_REQUEST, "Your request has bad syntax or is inherently impossible to staisfy.\n"},
+    {FORBIDDEN_REQUEST, "You do not have permission to get file form this server.\n"},
+    {NO_RESOURCE, "The requested file was not found on this server.\n"},
+    {INTERNAL_ERROR, "There was an unusual problem serving the request file.\n"},
+    {NOT_IMPLEMENTED, "THe request method is not implememted!\n"}
 };
 
 const std::map<std::string, std::string> mime = {
@@ -62,18 +73,17 @@ HttpConn::HttpConn(EventLoop* loop, int conn_fd, std::string&& conn_name):
     m_conn_name(conn_name),
     m_read_idx(0),
     m_check_state(CHECK_STATE_REQUESTLINE),
-    m_error_exist(false)
+    m_error_exist(false),
+    m_file_category("text/html")
 {
     m_channel->setEvents(EPOLLET | EPOLLIN);
     m_channel->setReadHandler(std::bind(&HttpConn::readHandler, this));
     m_channel->setWriteHandler(std::bind(&HttpConn::writeHandler, this));
-    m_channel->setErrorHandler(std::bind(&HttpConn::errorHandler, this));
     m_channel->setCloseHandler(std::bind(&HttpConn::closeHandler, this));
 }
 
 HttpConn::~HttpConn(){
     close(m_conn_fd);
-    // TODO : 还有其他事情吗
 }
 
 void HttpConn::readHandler(){
@@ -147,10 +157,6 @@ void HttpConn::closeHandler(){
 }
 
 
-void HttpConn::errorHandler(){
-    // TODO: 错误处理
-}
-
 
 void HttpConn::newConn(){
     // 使用loop的addToPoller加入到poller中
@@ -196,13 +202,80 @@ bool HttpConn::read(){
 }
 
 
-bool HttpConn::write(){
-    // TODO: 非阻塞写数据
+WRITE_RESULT HttpConn::write(){
+    // DONE: 非阻塞写数据，发送完记得关闭映射区 munmap: 答：返回WRITE_ALL, 由reset()函数负责munmap
+    int ret = 0;
+    while(true){ // 循环写数据直到不能再写
+        ret = writev(m_conn_fd, m_iovec, 2);
+        if(ret < 0){
+            if(errno == EAGAIN || errno == EWOULDBLOCK){
+                return WRITE_PART;
+            }
+            else{
+                LOG_ERROR("HttpConn::write() Error.");
+                // 是否需要关闭mmap的区域？由调用closeHandler()时调用reset()函数来munmap
+                return WRITE_ERROR;
+            }
+        }
+        if(ret < m_iovec[0].iov_len){
+            m_outbuff.erase(0, ret);
+            m_iovec[0].iov_base = &(*m_outbuff.begin());
+            m_iovec[0].iov_len = m_iovec[0].iov_len - ret;
+        }
+        else if(ret >= m_iovec[0].iov_len && ret < m_iovec[0].iov_len + m_iovec[1].iov_len){
+            m_iovec[1].iov_base = m_iovec[1].iov_base + (ret - m_iovec[0].iov_len);
+            m_iovec[1].iov_len = m_iovec[1].iov_len + m_iovec[0].iov_len - ret;
+            m_outbuff.clear();
+            m_iovec[0].iov_base = nullptr;
+            m_iovec[0].iov_len = 0;
+        }
+        else{
+            m_iovec[0].iov_base = nullptr;
+            m_iovec[0].iov_len = 0;
+            m_iovec[1].iov_base = nullptr;
+            m_iovec[1].iov_len = 0;
+            break;
+        }
+    }
+    return WRITE_ALL;
 }
 
-// 将需要发送的数据写入写缓冲区（进程空间）
+// 将需要发送的数据写入写缓冲区（进程空间）, 文件创建映射区
 bool HttpConn::sendResponse(HTTP_CODE code){
-    // TODO: 将发送的内容加入到写缓冲
+    // DONE: 将发送的内容加入到写缓冲
+    switch(code){
+        case INTERNAL_ERROR:
+        case BAD_REQUEST:
+        case NO_RESOURCE:
+        case FORBIDDEN_REQUEST:
+        case NOT_IMPLEMENTED:
+        {
+            add_status_line(code);
+            add_headers(code);
+            add_content(code);
+            break;
+        }
+        case FILE_REQUEST:
+        {
+            add_status_line(code);
+            add_headers(code);
+            // m_iovec[0].iov_base = &(*m_outbuff.begin());
+            // m_iovec[0].iov_len = m_outbuff.size();
+            // m_iovec[1].iov_base = m_file_ptr;
+            // m_iovec[1].iov_len = m_file_size;
+            // // DONE: 是否需要记录要写的总的字节数？答：应该不需要
+            // return true;
+            break;
+        }
+        default:
+            return false;
+    }
+    m_iovec[0].iov_base = &(*m_outbuff.begin());
+    m_iovec[0].iov_len = m_outbuff.size();
+    m_iovec[1].iov_base = m_file_ptr; // FIXME: 需要测试
+    m_iovec[1].iov_len = m_file_size; // FIXME: 需要测试
+    // DONE: 是否需要记录需要写的总的字节数？答：不需要
+    return true;
 }
 
 
@@ -372,24 +445,74 @@ HTTP_CODE HttpConn::parseContent(){
 
 
 HTTP_CODE HttpConn::doRequest(){
-    // TODO: 根据GET、POST、HEAD请求，做出相应的操作，返回相应的结果，GET、HEAD主要判断文件是否存在
-    std::string full_filename = m_path + "/" + m_filename;
+    // DONE: 根据GET、POST、HEAD请求，做出相应的操作，返回相应的结果，GET、HEAD主要判断文件是否存在
     if(m_method == POST){
-        
+        if(m_filename == "login.cgi" || m_filename == "register.cgi"){
+            int equal_pos1 = m_content.find('=');
+            int equal_pos2 = m_content.rfind('=');
+            int sep_pos = m_content.find('&');
+            if(equal_pos1 == std::string::npos || equal_pos2 == std::string::npos ||
+                sep_pos == std::string::npos || !(equal_pos1 < sep_pos && equal_pos2 > sep_pos))
+                return BAD_REQUEST;
+            std::string name = m_content.substr(equal_pos1 + 1, sep_pos - equal_pos1 - 1);
+            std::string passwd = m_content.substr(equal_pos2 + 1);
+            
+            // 分为login和register处理
+            MYSQL* mysql = nullptr;
+            auto mysql_raii = ConnectionRAII(&mysql);
+            std::string sql = "SELECT count(*) FROM user WHERE username=" + name + "and passwd=" + passwd;
+            if(mysql_query(mysql, sql.c_str())){
+                return INTERNAL_ERROR;
+            }
+            // 从表中检索完整的结果集
+            MYSQL_RES* result = mysql_store_result(mysql);
+            MYSQL_ROW row = mysql_fetch_row(result);
+            bool exist = bool(atoi(row[0]));
+
+            if(m_filename == "login.cgi"){
+                if(exist){
+                    m_filename = "success.html";
+                }
+                else{
+                    m_filename = "login_error.html";
+                }
+            }
+            else{
+                if(exist){
+                    m_filename = "register_error.html";
+                }
+                else{
+                    std::string insert_sql = "INSERT INTO user VALUES('" + name + "', '" + passwd + "')";
+                    if(mysql_query(mysql, insert_sql.c_str())){
+                        return INTERNAL_ERROR;
+                    }
+                    else{
+                        m_filename = "success.html";
+                    }
+                }
+            }
+            return FILE_REQUEST;
+        }
+        else return BAD_REQUEST;
     }
     else if(m_method == GET || m_method == HEAD){
+        std::string full_filename = m_path + "/" + m_filename;  
         struct stat st;
         int ret = stat(full_filename.c_str(), &st);
         if(ret < 0) return NO_RESOURCE; // 不存在这个文件
         if(!(st.st_mode & S_IROTH)) return FORBIDDEN_REQUEST; // 没有权限
         if(S_ISDIR(st.st_mode)) return BAD_REQUEST; // 请求的是一个目录
-        // 正常的请求
+
+        // DONE: 正常的请求, HEAD方法需要Content-Len吗？应该要？
+        m_file_size = 0;
         if(m_method == HEAD) return FILE_REQUEST;
         m_file_size = st.st_size;
         int fd = open(full_filename.c_str(), O_RDONLY);
         m_file_ptr = (char*)mmap(0, m_file_size, PROT_READ, MAP_PRIVATE, fd, 0);
         if(m_file_ptr == (char*)(-1)){
             munmap((void*)m_file_ptr, m_file_size);
+            m_file_ptr = nullptr; // 避免野指针
+            m_file_size = 0;
             LOG_ERROR("HttpConn::doRequest() mmap Error.");
             return INTERNAL_ERROR;
         }
@@ -408,14 +531,19 @@ void HttpConn::reset(){
     m_filename.clear();
     // m_path.clear(); // path设置为恒定的。
     m_headers.clear();
-    m_keep_alive = false;
-    m_version = HTTP11;
-    m_method = GET;
+    m_keep_alive = false; // FIXME: 哪里能够设置这个？以及文件类型？
+    m_file_category = "text/html";
+    m_version = HTTP11; 
+    m_method = GET; 
     m_check_state = CHECK_STATE_REQUESTLINE;
     m_content.clear();
     m_error_exist = false;
+    if(m_file_ptr != nullptr){ // munmap？
+        munmap(m_file_ptr, m_file_size);
+        m_file_ptr = nullptr;
+        m_file_size = 0;
+    }
     m_file_size = 0;
-    m_file_ptr = nullptr;
     // TODO: 可能还需要添加
     seperateTimer();
 }
@@ -428,30 +556,28 @@ void HttpConn::seperateTimer(){
 }
 
 
-void HttpConn::add_content(string content){
-    m_outbuff += content;
+void HttpConn::add_status_line(HTTP_CODE code){
+    m_outbuff += (m_version == HTTP10 ? "HTTP/1.0" : "HTTP/1.1")
+                 + " " + to_string(status_code[code]) + " " + status_desc[code] + "\r\n";
 }
 
-void HttpConn::add_status_line(int status){
 
+void HttpConn::add_headers(HTTP_CODE code){
+    if(code != FILE_REQUEST)
+        m_outbuff += "Content-Length: " + to_string(strlen(response_content[code])) +
+                 "\r\nContent-Type: text/html\r\nConnection: close\r\nServer: VictorServer\r\n\r\n";
+    else{ // 记得空行
+        m_outbuff += "Content-Length: " + to_string(m_file_size) + 
+                 "\r\nContent-Type: " + m_file_category + "\r\nConnection: " +
+                 (m_keep_alive ? "keep-alive" : "close") + 
+                 "\r\nServer: VictorServer\r\n\r\n";
+    }
 }
 
-void HttpConn::add_headers(string header, string value){
 
+void HttpConn::add_content(HTTP_CODE code){
+    m_outbuff += response_content[code];
 }
 
-void HttpConn::add_content_type(){
 
-}
 
-void HttpConn::add_content_length(){
-
-}
-
-void HttpConn::add_linger(){ // linger的用处?
-
-}
-
-void HttpConn::add_blank_line(){
-    m_outbuff += "\r\n";
-}
