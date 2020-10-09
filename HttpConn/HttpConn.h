@@ -13,8 +13,12 @@
 #include <sys/uio.h>
 
 #include "../Timer/Timer.h"
-#include "../EventLoop/EventLoop.h"
-#include "../Channel/Channel.h"
+// #include "../EventLoop/EventLoop.h"
+// #include "../Channel/Channel.h"
+
+// 声明用到的类，避免循环include
+class EventLoop;
+class Channel;
 
 enum METHOD{
     GET = 0,
@@ -60,7 +64,7 @@ enum WRITE_RESULT{
 
 class HttpConn : public std::enable_shared_from_this<HttpConn>{
     public:
-        HttpConn(EventLoop* loop, int conn_fd, std::string&& conn_name);
+        HttpConn(EventLoop* loop, int conn_fd, std::string&& conn_name, std::string path);
         ~HttpConn();
         void setTimer(std::shared_ptr<Timer> timer);
         std::string getName();

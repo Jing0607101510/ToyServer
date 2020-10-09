@@ -66,8 +66,7 @@ void Server::readHandler(){
         // 设置HttpData对象中的Channel的Holder
         // 以IP:Port为连接名
         std::string conn_name = std::string(inet_ntoa(client_addr.sin_addr)) + std::to_string(ntohs(client_addr.sin_port));
-        std::shared_ptr<HttpConn> http_conn(new HttpConn(loop, connfd, conn_name, m_server_root));
-        http_conn->getChannel()->setHolder(http_conn);
+        std::shared_ptr<HttpConn> http_conn(new HttpConn(loop, connfd, std::move(conn_name), m_server_root));
         // 将这个HttpData加入到poller中，并且将它的channel加入到poller中监听
         loop->queueInLoop(std::bind(&HttpConn::newConn, http_conn));
     }

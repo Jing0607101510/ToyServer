@@ -28,8 +28,8 @@ void daemon_run(); // 以守护进程方式运行
 void start_log(Config config);
 void create_connection_pool(Config config);
 pid_t gettid();
-bool is_dir_exists(char* dirname);
-bool create_dir(char* dirname);
+bool is_dir_exists(const char* dirname);
+bool create_dir(const char* dirname);
 void setup_server(Config config);
 void sigterm_handler(int sig); // SIGTERM的信号处理函数
 int create_wakeup_fd();

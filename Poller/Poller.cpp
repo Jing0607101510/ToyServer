@@ -67,7 +67,7 @@ void Poller::addChannel(std::shared_ptr<Channel> channel){
         // 将Channel所对应的HttpConn的wk_ptr以shared_ptr的形式，加入到m_conns中
         std::shared_ptr<HttpConn> sp_http_conn = channel->getHolder();
         if(sp_http_conn){ // 有对应的HttpConn才加入，像listen_channel 和wakeup_channel没有对应的HttpConn，所以不加入
-            m_conn[sp_http_conn->getName()] = sp_http_conn;
+            m_conns[sp_http_conn->getName()] = sp_http_conn;
         }
     }
 }
@@ -83,7 +83,7 @@ void Poller::delChannel(std::shared_ptr<Channel> channel){
         // 从m_conns中删除httpConn对象
         std::shared_ptr<HttpConn> sp_http_conn = channel->getHolder();
         if(sp_http_conn){
-            m_conn.erase(sp_http_conn->getName());
+            m_conns.erase(sp_http_conn->getName());
         }
     }
 }

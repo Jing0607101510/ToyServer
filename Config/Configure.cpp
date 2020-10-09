@@ -96,7 +96,7 @@ Config::Config(){ // 默认方式初始化参数
     num_thread = 8;
     run_backend = false;
     no_linger = false;
-    server_root = "root";
+    server_root = "root/";
 
     enable_logging = false;
     log_file_name = "logs/log/log";

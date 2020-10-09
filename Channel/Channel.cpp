@@ -43,7 +43,7 @@ void Channel::setWriteHandler(Callback&& write_handler){
 
 
 
-void setCloseHandler(Callback&& close_handler){
+void Channel::setCloseHandler(Callback&& close_handler){
     m_close_handler = close_handler;
 }
 
@@ -93,10 +93,9 @@ void Channel::handleWrite(){
     }
 }
 
-
-void Channel::handleError(){
-    if(m_error_handler){
-        m_error_handler();
+void Channel::handleClose(){
+    if(m_close_handler){
+        m_close_handler();
     }
 }
 
@@ -107,7 +106,7 @@ void Channel::handleEvents(){
     m_events = 0; 
 
     if(m_revents & (EPOLLHUP | EPOLLERR)){
-        handleError();
+        handleClose();
         return;
     }
     else{

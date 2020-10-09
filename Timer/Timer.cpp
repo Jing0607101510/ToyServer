@@ -7,7 +7,6 @@
 #include "Timer.h"
 
 Timer::Timer(int timeout, Callback&& cb_func):
-            m_expired_time(expired_time), 
             m_cb_func(cb_func),
             m_deleted(false)
 {

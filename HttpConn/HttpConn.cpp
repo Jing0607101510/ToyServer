@@ -18,12 +18,13 @@
 #include "HttpConn.h"
 #include "../Log/Logger.h"
 #include "../ConnectionPool/ConnectionPool.h"
+#include "../Utils/Utils.h"
 
 const int DEFAULT_EXPIRED_TIME = 2; // ms
 const int DEFAULT_KEEP_ALIVE_TIME = 5 * 60; // ms
 const int MAX_BUFF_SIZE = 1024;
 
-const std::map<HTTP_CODE, int> status_code = {
+std::map<HTTP_CODE, int> status_code = {
     {FILE_REQUEST, 200},
     {BAD_REQUEST, 400},
     {FORBIDDEN_REQUEST, 403},
@@ -32,7 +33,7 @@ const std::map<HTTP_CODE, int> status_code = {
     {NOT_IMPLEMENTED, 501}
 };
 
-const std::map<HTTP_CODE, std::string> status_desc = {
+std::map<HTTP_CODE, std::string> status_desc = {
     {FILE_REQUEST, "OK"},
     {BAD_REQUEST, "Bad Request"},
     {FORBIDDEN_REQUEST, "Forbidden"},
@@ -41,7 +42,7 @@ const std::map<HTTP_CODE, std::string> status_desc = {
     {NOT_IMPLEMENTED, "Not Implemented"}
 };
 
-const std::map<HTTP_CODE, std::string> response_content = {
+std::map<HTTP_CODE, std::string> response_content = {
     {BAD_REQUEST, "Your request has bad syntax or is inherently impossible to staisfy.\n"},
     {FORBIDDEN_REQUEST, "You do not have permission to get file form this server.\n"},
     {NO_RESOURCE, "The requested file was not found on this server.\n"},
@@ -49,7 +50,7 @@ const std::map<HTTP_CODE, std::string> response_content = {
     {NOT_IMPLEMENTED, "THe request method is not implememted!\n"}
 };
 
-const std::map<std::string, std::string> mime = {
+std::map<std::string, std::string> mime = {
     {".html", "text/html"},
     {".avi", "video/x-msvideo"},
     {".bmp", "image/bmp"},
@@ -79,6 +80,9 @@ HttpConn::HttpConn(EventLoop* loop, int conn_fd, std::string&& conn_name, std::s
     m_file_category("text/html"),
     m_path(path)
 {
+    if(!is_dir_exists(m_path.c_str())){
+        create_dir(m_path.c_str());
+    }
     m_channel->setEvents(EPOLLET | EPOLLIN);
     m_channel->setReadHandler(std::bind(&HttpConn::readHandler, this));
     m_channel->setWriteHandler(std::bind(&HttpConn::writeHandler, this));
@@ -162,6 +166,8 @@ void HttpConn::closeHandler(){
 
 
 void HttpConn::newConn(){
+    // 设置Channel对应的HttpConn
+    m_channel->setHolder(shared_from_this());
     // 使用loop的addToPoller加入到poller中
     m_loop->addToPoller(m_channel, DEFAULT_EXPIRED_TIME);
 }
@@ -181,8 +187,8 @@ std::shared_ptr<Channel> HttpConn::getChannel(){
 
 
 bool HttpConn::read(){
-    // 循环读取数据，直到没有数据
-    char* buff[MAX_BUFF_SIZE];
+    // // 循环读取数据，直到没有数据
+    char buff[MAX_BUFF_SIZE];
     ssize_t nread = 0;
     while(true){
         nread = recv(m_conn_fd, buff, MAX_BUFF_SIZE, 0);
@@ -385,7 +391,7 @@ HTTP_CODE HttpConn::parseRequestLine(){
 
     // 解析URI
     m_filename = line.substr(first_sep_pos + 1, second_sep_pos - first_sep_pos - 1);
-    if(m_filename == '/')
+    if(m_filename == "/")
         m_filename += "index.html";
     else{
         int pos = m_filename.find('?');
@@ -431,7 +437,7 @@ HTTP_CODE HttpConn::parseHeaders(){
         if(colon_pos == std::string::npos)
             return BAD_REQUEST;
         std::string key = header.substr(0, colon_pos);
-        ttransform(key.begin(), key.end(), key.begin(), ::tolower);
+        transform(key.begin(), key.end(), key.begin(), ::tolower);
         std::string value = header.substr(colon_pos + 2);
         transform(value.begin(), value.end(), value.begin(), ::tolower);
         m_headers[key] = value;
@@ -442,7 +448,7 @@ HTTP_CODE HttpConn::parseHeaders(){
 HTTP_CODE HttpConn::parseContent(){
     if(m_headers.find("content-length") == m_headers.end())
         return BAD_REQUEST;
-    int content_len = atoi(m_headers.find("content-length"));
+    int content_len = stoi(m_headers["content-length"]);
     if(m_inbuff.size() >= content_len){
         m_content = m_inbuff.substr(0, content_len);
         m_inbuff.erase(0, content_len); // 清楚前面已经处理的部分
@@ -578,17 +584,17 @@ void HttpConn::seperateTimer(){
 
 
 void HttpConn::add_status_line(HTTP_CODE code){
-    m_outbuff += (m_version == HTTP10 ? "HTTP/1.0" : "HTTP/1.1")
-                 + " " + to_string(status_code[code]) + " " + status_desc[code] + "\r\n";
+    m_outbuff += (m_version == HTTP10 ? "HTTP/1.0 " : "HTTP/1.1 ")
+                 + std::to_string(status_code[code]) + " " + status_desc[code] + "\r\n";
 }
 
 
 void HttpConn::add_headers(HTTP_CODE code){
     if(code != FILE_REQUEST)
-        m_outbuff += "Content-Length: " + to_string(strlen(response_content[code])) +
+        m_outbuff += "Content-Length: " + std::to_string(response_content[code].size()) +
                  "\r\nContent-Type: text/html\r\nConnection: close\r\nServer: VictorServer\r\n\r\n";
     else{ // 记得空行
-        m_outbuff += "Content-Length: " + to_string(m_file_size) + 
+        m_outbuff += "Content-Length: " + std::to_string(m_file_size) + 
                  "\r\nContent-Type: " + m_file_category + "\r\nConnection: " +
                  (m_keep_alive ? "keep-alive" : "close") + 
                  "\r\nServer: VictorServer\r\n\r\n";

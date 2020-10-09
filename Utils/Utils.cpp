@@ -159,14 +159,14 @@ pid_t gettid(){
 }
 
 
-bool is_dir_exists(char* dirname){
+bool is_dir_exists(const char* dirname){
     if(access(dirname, F_OK) < 0){
         return false;
     }
     else return true;
 }
 
-bool create_dir(char* dirname){
+bool create_dir(const char* dirname){
     char dir_name[512];
     strcpy(dir_name, dirname);
     int len = strlen(dir_name);

@@ -57,8 +57,7 @@ class Channel: public std::enable_shared_from_this<Channel>{
     private:
         void handleRead();
         void handleWrite();
-        void handleConn();
-        void handleError();
+        void handleClose();
 };
 
 

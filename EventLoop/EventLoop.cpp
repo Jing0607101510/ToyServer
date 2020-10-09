@@ -128,7 +128,7 @@ void EventLoop::updatePoller(std::shared_ptr<Channel> sp_channel, int timeout){
             auto callback = std::bind(&HttpConn::closeHandler, sp_conn.get());
             std::shared_ptr<Timer> sp_timer(new Timer(timeout, callback));
             sp_conn->setTimer(sp_timer);
-            m_timer_queue->addTimer(sp_tiemr);
+            m_timer_queue->addTimer(sp_timer);
         }
         m_poller->modChannel(sp_channel);
     }
