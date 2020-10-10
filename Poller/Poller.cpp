@@ -26,15 +26,15 @@ Poller::~Poller(){}
 void Poller::poll(std::vector<std::shared_ptr<Channel>>& activeChannels){
     int active_num = epoll_wait(m_epoll_fd, &(*m_epoll_events.begin()), max_events, EPOLL_WAIT_TIME);
     if(active_num > 0){
-        LOG_INFO("Epoll Wait: %d events happened.", active_num);
+        LOG_INFO("Poller:poll()  Epoll Wait: %d channels' events happen.", active_num);
         getActiveChannels(active_num, activeChannels);
     }
     else if(active_num == 0){
-        LOG_INFO("Epoll Wait Timeout.");
+        LOG_INFO("Poller:poll()  Epoll Wait Timeout.");
     }
     else{
         if(errno == EINTR){
-            LOG_INFO("Epoll Wait is Interrupted.");
+            LOG_INFO("Poller:poll()  Epoll Wait is Interrupted.");
         }
         else{
             LOG_ERROR("Epoll Wait Error: %s", strerror(errno));
@@ -55,7 +55,7 @@ void Poller::getActiveChannels(int active_num, std::vector<std::shared_ptr<Chann
 
 void Poller::addChannel(std::shared_ptr<Channel> channel){
     if(channel){
-        struct epoll_event event;
+        struct epoll_event event; // 
         bzero(&event, sizeof(event));
         event.events = channel->getEvents();
         event.data.ptr = channel.get();
@@ -78,7 +78,7 @@ void Poller::delChannel(std::shared_ptr<Channel> channel){
         int fd = channel->getFd();
         int ret = epoll_ctl(m_epoll_fd, EPOLL_CTL_DEL, fd, nullptr);
         if(ret < 0){
-            LOG_ERROR("Del Channel Error: %s.", strerror(errno));
+            LOG_ERROR("Poller::delChannel()  Del Channel Error: %s.", strerror(errno));
         }
         // 从m_conns中删除httpConn对象
         std::shared_ptr<HttpConn> sp_http_conn = channel->getHolder();

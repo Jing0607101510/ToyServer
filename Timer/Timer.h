@@ -21,6 +21,7 @@ class Timer{
         bool isDeleted();
         void setDeleted();
         time_t getExpiredTime();
+        void tick();
     private:
         time_t m_expired_time;
         bool m_deleted;

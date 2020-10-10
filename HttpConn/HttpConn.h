@@ -75,6 +75,7 @@ class HttpConn : public std::enable_shared_from_this<HttpConn>{
         void closeHandler();
 
     private:
+    public:
         EventLoop* m_loop;
         std::shared_ptr<Timer> m_timer;
         std::shared_ptr<Channel> m_channel;
@@ -106,7 +107,7 @@ class HttpConn : public std::enable_shared_from_this<HttpConn>{
         CHECK_STATE m_check_state; // 当前处在什么状态，做什么事情，导致状态转移
 
     private:
-
+    public:
         bool read();
         WRITE_RESULT write();
         
@@ -118,16 +119,16 @@ class HttpConn : public std::enable_shared_from_this<HttpConn>{
         HTTP_CODE parseContent();
         HTTP_CODE doRequest();
 
-        void reset();
-        void seperateTimer();
+        void reset(); // 已测试
+        void seperateTimer(); // 已测试
 
-        void readHandler();
+        void readHandler(); 
         void writeHandler();
 
         
-        void add_status_line(HTTP_CODE code);
-        void add_headers(HTTP_CODE code);
-        void add_content(HTTP_CODE code);
+        void add_status_line(HTTP_CODE code); // 已测试
+        void add_headers(HTTP_CODE code); // 已测试
+        void add_content(HTTP_CODE code); // 已测试
 
 };
 

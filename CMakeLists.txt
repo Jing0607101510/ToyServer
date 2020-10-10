@@ -33,5 +33,4 @@ add_subdirectory(Utils)
 add_executable(VictorServer ${SRC})
 
 # 添加链接库
-target_link_libraries(VictorServer Channel Config ConnectionPool EventLoop EventLoopThreadPool
-                    HttpConn Log Poller Server Timer Utils)
+target_link_libraries(VictorServer Logger Server Configure Utils EventLoop)

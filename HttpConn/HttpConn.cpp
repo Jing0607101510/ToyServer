@@ -14,14 +14,17 @@
 #include <mysql/mysql.h>
 #include <ctype.h>
 #include <algorithm>
+#include <iostream>
 
 #include "HttpConn.h"
 #include "../Log/Logger.h"
 #include "../ConnectionPool/ConnectionPool.h"
-#include "../Utils/Utils.h"
+#include "../Utils/Utils.h" // Utils.h头文件include了EventLoop.h头文件，EventLoop.h头文件include了Channel.h头文件，所以成功。否则失败
+#include "../EventLoop/EventLoop.h"
+#include "../Channel/Channel.h"
 
-const int DEFAULT_EXPIRED_TIME = 2; // ms
-const int DEFAULT_KEEP_ALIVE_TIME = 5 * 60; // ms
+const int DEFAULT_EXPIRED_TIME = 2; // s
+const int DEFAULT_KEEP_ALIVE_TIME = 2 * 60; // 120s
 const int MAX_BUFF_SIZE = 1024;
 
 std::map<HTTP_CODE, int> status_code = {
@@ -100,7 +103,7 @@ void HttpConn::readHandler(){
         closeHandler(); // 若出错或者对端关闭，则关闭fd
         return;
     }
-    // 对数据进行处理
+    // 对数据进行分析处理
     HTTP_CODE analyse_ret = analyseRequest();
     // 对不同的HTTP_CODE进行处理
     if(analyse_ret == NO_REQUEST){ // 数据不够，继续读取
@@ -112,7 +115,7 @@ void HttpConn::readHandler(){
         m_loop->updatePoller(m_channel, timeout);
         return;
     } 
-    if(analyse_ret != GET_REQUEST) m_error_exist = true; // 报文分析错误，或者请求的内容错误
+    if(analyse_ret != FILE_REQUEST) m_error_exist = true; // 报文分析错误，或者请求的内容错误
 
     ret = sendResponse(analyse_ret); // 只是写到写缓冲区
     if(!ret){
@@ -120,7 +123,7 @@ void HttpConn::readHandler(){
         return;
     }
     
-    writeHandler();
+    writeHandler(); // 真正写
 }
 
 void HttpConn::writeHandler(){
@@ -232,7 +235,7 @@ WRITE_RESULT HttpConn::write(){
             m_iovec[0].iov_len = m_iovec[0].iov_len - ret;
         }
         else if(ret >= m_iovec[0].iov_len && ret < m_iovec[0].iov_len + m_iovec[1].iov_len){
-            m_iovec[1].iov_base = m_iovec[1].iov_base + (ret - m_iovec[0].iov_len);
+            m_iovec[1].iov_base = static_cast<void*>(static_cast<char*>(m_iovec[1].iov_base) + (ret - m_iovec[0].iov_len));
             m_iovec[1].iov_len = m_iovec[1].iov_len + m_iovec[0].iov_len - ret;
             m_outbuff.clear();
             m_iovec[0].iov_base = nullptr;
@@ -243,6 +246,7 @@ WRITE_RESULT HttpConn::write(){
             m_iovec[0].iov_len = 0;
             m_iovec[1].iov_base = nullptr;
             m_iovec[1].iov_len = 0;
+            m_outbuff.clear(); // 之前忘记清空m_outbuff了
             break;
         }
     }
@@ -352,6 +356,7 @@ HTTP_CODE HttpConn::analyseRequest(){
                 line_state = LINE_AGAIN;
                 break;
             default:
+                LOG_ERROR("HttpConn::analyseRequest() Unkown CHECK_STATE Error.");
                 return INTERNAL_ERROR;
         }
     }
@@ -373,11 +378,11 @@ HTTP_CODE HttpConn::parseRequestLine(){
     }
     // 解析请求方法
     std::string method = line.substr(0, first_sep_pos);
-    if(strcasecmp(method.c_str(), "GET"))
+    if(strcasecmp(method.c_str(), "GET") == 0) // strcasecmp忽略大小写比较两个字符串，相等返回0
         m_method = GET;
-    else if(strcasecmp(method.c_str(), "HEAD"))
+    else if(strcasecmp(method.c_str(), "HEAD") == 0)
         m_method = HEAD;
-    else if(strcasecmp(method.c_str(), "POST"))
+    else if(strcasecmp(method.c_str(), "POST") == 0)
         m_method = POST;
     else{
         m_method = OTHERS;
@@ -461,8 +466,11 @@ HTTP_CODE HttpConn::parseContent(){
 
 HTTP_CODE HttpConn::doRequest(){
     // DONE: 根据GET、POST、HEAD请求，做出相应的操作，返回相应的结果，GET、HEAD主要判断文件是否存在
+    struct stat st;
+    std::string full_filename = m_path;
+
     if(m_method == POST){
-        if(m_filename == "login.cgi" || m_filename == "register.cgi"){
+        if(m_filename == "/login.cgi" || m_filename == "/register.cgi"){
             int equal_pos1 = m_content.find('=');
             int equal_pos2 = m_content.rfind('=');
             int sep_pos = m_content.find('&');
@@ -475,8 +483,9 @@ HTTP_CODE HttpConn::doRequest(){
             // 分为login和register处理
             MYSQL* mysql = nullptr;
             auto mysql_raii = ConnectionRAII(&mysql);
-            std::string sql = "SELECT count(*) FROM user WHERE username=" + name + "and passwd=" + passwd;
+            std::string sql = "SELECT count(*) FROM user WHERE username='" + name + "' and passwd='" + passwd + "'";
             if(mysql_query(mysql, sql.c_str())){
+                LOG_ERROR("HttpConn::doRequest() SQL select Error.");
                 return INTERNAL_ERROR;
             }
             // 从表中检索完整的结果集
@@ -485,35 +494,41 @@ HTTP_CODE HttpConn::doRequest(){
             bool exist = bool(atoi(row[0]));
 
             m_file_category = "text/html";
-            if(m_filename == "login.cgi"){
+            if(m_filename == "/login.cgi"){
                 if(exist){
-                    m_filename = "success.html";
+                    m_filename = "/success.html";
                 }
                 else{
-                    m_filename = "login_error.html";
+                    m_filename = "/login_error.html";
                 }
             }
             else{
                 if(exist){
-                    m_filename = "register_error.html";
+                    m_filename = "/register_error.html";
                 }
                 else{
                     std::string insert_sql = "INSERT INTO user VALUES('" + name + "', '" + passwd + "')";
                     if(mysql_query(mysql, insert_sql.c_str())){
+                        LOG_ERROR("HttpConn::doRequest() SQL insert Error.");
                         return INTERNAL_ERROR;
                     }
                     else{
-                        m_filename = "success.html";
+                        m_filename = "/success.html";
                     }
                 }
             }
-            return FILE_REQUEST;
+            full_filename += m_filename;
+            int ret = stat(full_filename.c_str(), &st);
+            if(ret < 0) return NO_RESOURCE;
+            if(!(st.st_mode & S_IROTH)) return FORBIDDEN_REQUEST; // 没有权限
+            if(S_ISDIR(st.st_mode)) return BAD_REQUEST; // 请求的是一个目录
+            m_file_size = st.st_size;
         }
         else return BAD_REQUEST;
     }
     else if(m_method == GET || m_method == HEAD){
-        std::string full_filename = m_path + "/" + m_filename;  
-        struct stat st;
+        full_filename += m_filename;  
+        
         int ret = stat(full_filename.c_str(), &st);
         if(ret < 0) return NO_RESOURCE; // 不存在这个文件
         if(!(st.st_mode & S_IROTH)) return FORBIDDEN_REQUEST; // 没有权限
@@ -522,17 +537,8 @@ HTTP_CODE HttpConn::doRequest(){
         // DONE: 正常的请求, HEAD方法需要Content-Len吗？应该要？
         m_file_size = 0;
         if(m_method == HEAD) return FILE_REQUEST;
+
         m_file_size = st.st_size;
-        int fd = open(full_filename.c_str(), O_RDONLY);
-        m_file_ptr = (char*)mmap(0, m_file_size, PROT_READ, MAP_PRIVATE, fd, 0);
-        if(m_file_ptr == (char*)(-1)){
-            munmap((void*)m_file_ptr, m_file_size);
-            m_file_ptr = nullptr; // 避免野指针
-            m_file_size = 0;
-            LOG_ERROR("HttpConn::doRequest() mmap Error.");
-            return INTERNAL_ERROR;
-        }
-        close(fd);
 
         int dot_pos = m_filename.rfind(".");
         if(dot_pos == std::string::npos){
@@ -541,11 +547,26 @@ HTTP_CODE HttpConn::doRequest(){
         else{
             m_file_category = mime[m_filename.substr(dot_pos)];
         }
-        return FILE_REQUEST;
     }
     else{
         return NOT_IMPLEMENTED;
     }
+    
+    int fd = open(full_filename.c_str(), O_RDONLY);
+    if(fd < 0){
+        LOG_ERROR("HttpConn::doRequest() open file Error.");
+        return INTERNAL_ERROR;
+    } 
+    m_file_ptr = static_cast<char*>(mmap(0, m_file_size, PROT_READ, MAP_PRIVATE, fd, 0));
+    if(m_file_ptr == (char*)(-1)){
+        munmap((void*)m_file_ptr, m_file_size);
+        m_file_ptr = nullptr; // 避免野指针
+        m_file_size = 0;
+        LOG_ERROR("HttpConn::doRequest() mmap Error.");
+        return INTERNAL_ERROR;
+    }
+    close(fd);
+    return FILE_REQUEST;
 }
 
 // 设置对应的Timer的delete标志为true，设置对应的Callback为nullptr
@@ -572,11 +593,12 @@ void HttpConn::reset(){
     m_iovec[1].iov_base = nullptr;
     m_iovec[1].iov_len = 0;
     // DONE: 可能还需要添加
-    seperateTimer();
+    seperateTimer(); // 分离计时器
 }
 
 void HttpConn::seperateTimer(){
     if(m_timer){
+        LOG_INFO("HttpConn::seperateTimer() Seperate the timer from httpConn.");
         m_timer->setDeleted();
         m_timer.reset();
     }

@@ -19,7 +19,7 @@ int main(int argc, char* argv[]){
     setup_server(config);
     // 启动server和主循环
     EventLoop loop;
-    g_base_loop = &loop;
+    g_base_loop = &loop; // 用于信号处理函数 // FIXME: 需要测试
     Server server(config, &loop);
     server.start();
     loop.loop();

@@ -85,24 +85,24 @@ void  ConnectionPool::init(std::string url, int port, std::string db_name, std::
 
 // 管理线程，running为true时才工作, 扩展或者缩小都要重新设定信号量的大小
 void ConnectionPool::manage_pool(){ 
-    std::cout << "进入管理线程" << std::endl;
+    // std::cout << "进入管理线程" << std::endl;
     // 使用到 running成员变量
     while(running){
         sleep(DEFAULT_SLEEP_TIME); // 周期检测
         std::lock_guard<std::mutex> guard(conn_mtx);
 
         int num_wait = -sem.getvalue(); // 得到的剩下的连接数，取反才是等待连接的数量
-        std::cout << "num_wait等待数量" << num_wait << std::endl;
+        // std::cout << "num_wait等待数量" << num_wait << std::endl;
         int busy_num_conn = num_wait >= 0 ? cur_num_conn : cur_num_conn + num_wait; // 正在被使用的连接数
         // 如果等待连接的数量 多于 设定的数量，则增加连接 DEFAULT_CONN_VARY 个
         if(num_wait >= MIN_WAIT_TASK_NUM){
-            std::cout << "新增加连接" << min(DEFAULT_CONN_VARY, max_num_conn - cur_num_conn) << std::endl;
+            LOG_INFO("Add %d new SQL connection.", min(DEFAULT_CONN_VARY, max_num_conn - cur_num_conn));
             expand_pool(min(DEFAULT_CONN_VARY, max_num_conn - cur_num_conn));
         }
 
         // 如果 正在被使用的连接×2 小于全部连接 
         else if(busy_num_conn * 2 < cur_num_conn){
-            std::cout << "新减少连接" << min(DEFAULT_CONN_VARY, cur_num_conn - min_num_conn) << std::endl;
+            LOG_INFO("Release %d SQL connection.", min(DEFAULT_CONN_VARY, cur_num_conn - min_num_conn));
             reduce_pool(min(DEFAULT_CONN_VARY, cur_num_conn - min_num_conn));
         }
     }

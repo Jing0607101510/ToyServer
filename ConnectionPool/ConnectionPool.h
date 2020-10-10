@@ -7,7 +7,7 @@
 #ifndef __CONNECTION_POOL_H__
 #define __CONNECTION_POOL_H__
 
-#define DEFAULT_SLEEP_TIME 1 // 20 // 管理线程周期检测时间
+#define DEFAULT_SLEEP_TIME 10 // 20 // 管理线程周期检测时间
 #define MIN_WAIT_TASK_NUM 1 //5 // 最小等待任务数
 #define DEFAULT_CONN_VARY 2 // 每次增减的连接个数
 

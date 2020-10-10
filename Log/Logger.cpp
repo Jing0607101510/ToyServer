@@ -2,6 +2,7 @@
 
 #include "Logger.h"
 #include "../Utils/Utils.h"
+#include "../EventLoopThreadPool/EventLoopThread.h"
 
 
 bool Logger::init(char* log_file_name, bool run_backend, long log_mode, int cnt_split_file){
@@ -72,7 +73,7 @@ void Logger::async_write_log(){ // 线程运行这个函数，可以访问对象
 
 // 根据日志模式，同步写到文件，或者异步加入到日志队列中
 // 多个线程访问共享变量，所以需要加锁
-void Logger::append_log(long level, char* format, ...){
+void Logger::append_log(long level, const char* format, ...){
     // 获取时间
     time_t now = time(NULL);
     struct tm* local_now = localtime(&now);
@@ -124,7 +125,7 @@ void Logger::append_log(long level, char* format, ...){
     va_end(varglist);
 
     char content[1024] = {0};
-    snprintf(content, sizeof(content)-1, "%s %10s %s\n", time_str, level_str, msg);
+    snprintf(content, sizeof(content)-1, "%s %10s [%5d] %s\n", time_str, level_str, CurrentThread::tid(), msg);
 
     if(m_log_mode == LOG_MODE_SYNC){
         fputs(content, m_log_file);
@@ -138,7 +139,7 @@ void Logger::append_log(long level, char* format, ...){
     }
 
     if(!m_run_backend){
-        std::cerr << content; // 不带缓冲区输出
+        write(STDOUT_FILENO, content, strlen(content)); // 不带缓冲区输出
     }
     
 }

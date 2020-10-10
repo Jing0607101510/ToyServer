@@ -5,9 +5,10 @@
 */
 
 #include <sys/epoll.h>
+#include <iostream>
 
 #include "Channel.h"
-
+#include "../Log/Logger.h"
 
 Channel::Channel(){
     m_fd = -1;
@@ -105,20 +106,21 @@ void Channel::handleEvents(){
     // 在下面的处理过程中，更新m_events
     m_events = 0; 
 
-    if(m_revents & (EPOLLHUP | EPOLLERR)){
+    if(m_revents & (EPOLLHUP | EPOLLERR | EPOLLRDHUP)){
+        LOG_INFO("Channel::handleEvents() HUP or ERR or RDHUP event happens.");
         handleClose();
         return;
     }
     else{
-        if(m_revents & (EPOLLIN | EPOLLPRI | EPOLLRDHUP)){
+        if(m_revents & (EPOLLIN | EPOLLPRI)){
+            LOG_INFO("Channel::handleEvents() read event happens.");
             handleRead();
         }
         if(m_revents & EPOLLOUT){
+            LOG_INFO("Channel::handleEvents() write event happens.");
             handleWrite();
         }
     }
-    // 是否执行handleConn()函数？
-    // TODO: 可能还需要修改
 }
 
 

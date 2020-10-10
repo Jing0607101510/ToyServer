@@ -49,7 +49,7 @@ class Logger{
             return instance;
         }
         bool init(char* log_file_name, bool run_backend, long log_mode=LOG_MODE_SYNC, int cnt_split_file=10000); // 初始化日志系统中的参数
-        void append_log(long level, char* format, ...); 
+        void append_log(long level, const char* format, ...); 
         void stop(); // 暂停日志系统
         bool is_running(){return m_running;}
 

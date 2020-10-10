@@ -28,7 +28,7 @@ class Poller{
     private:
         std::vector<epoll_event> m_epoll_events;
         int m_epoll_fd; 
-        const int max_events;
+        const int max_events; // m_epoll_events数组的大小
         // poller持有HttpConn对象的shared_ptr
         std::map<std::string, std::shared_ptr<HttpConn>> m_conns;
 };

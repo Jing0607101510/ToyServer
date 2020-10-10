@@ -53,7 +53,7 @@ void Server::readHandler(){
     int connfd = -1;
     while((connfd = accept(m_listen_fd, (struct sockaddr*)&client_addr, &addr_len)) >= 0){
         // 打印连接的客户端的IP和端口号
-        LOG_INFO("The Client %s : %p Connected to Server.", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+        LOG_INFO("The Client %s : %d Connected to Server.", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
         // 设置connfd为非阻塞
         set_sock_non_blocking(connfd);
         // 关闭Nagle算法
@@ -65,7 +65,7 @@ void Server::readHandler(){
         // 创建HttpData对象
         // 设置HttpData对象中的Channel的Holder
         // 以IP:Port为连接名
-        std::string conn_name = std::string(inet_ntoa(client_addr.sin_addr)) + std::to_string(ntohs(client_addr.sin_port));
+        std::string conn_name = std::string(inet_ntoa(client_addr.sin_addr)) + ":" + std::to_string(ntohs(client_addr.sin_port));
         std::shared_ptr<HttpConn> http_conn(new HttpConn(loop, connfd, std::move(conn_name), m_server_root));
         // 将这个HttpData加入到poller中，并且将它的channel加入到poller中监听
         loop->queueInLoop(std::bind(&HttpConn::newConn, http_conn));

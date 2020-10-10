@@ -24,7 +24,7 @@ EventLoop::EventLoop():
     m_wakeup_fd(create_wakeup_fd()),
     m_wakeup_channel(new Channel(m_wakeup_fd)),
     m_poller(new Poller()),
-    thread_id(CurrentThread::tid()),
+    thread_id(CurrentThread::tid()), // 系统全局id（lwp id）
     m_looping(false),
     m_doing_pending(false),
     m_timer_queue(new TimerQueue())
@@ -124,6 +124,7 @@ void EventLoop::updatePoller(std::shared_ptr<Channel> sp_channel, int timeout){
     // 将Channel修改到epoll中
     if(sp_channel){
         if(timeout){
+            std::cout << "EventLoop::updatePoller() 新计时器" << std::endl;
             std::shared_ptr<HttpConn> sp_conn = sp_channel->getHolder();
             auto callback = std::bind(&HttpConn::closeHandler, sp_conn.get());
             std::shared_ptr<Timer> sp_timer(new Timer(timeout, callback));
@@ -162,6 +163,7 @@ void EventLoop::doPendingFunctors(){
         std::lock_guard<std::mutex> guard(m_mtx);
         functors.swap(m_pending_functors);
     }
+    LOG_INFO("EventLoop::doPendingFunctors() %d pendingFunctors.", functors.size());
     for(auto& func : functors){
         func();
     }
