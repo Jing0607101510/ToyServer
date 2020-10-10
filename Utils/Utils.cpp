@@ -150,7 +150,7 @@ void daemon_run(){
 void start_log(Config config){
     char log_file_name[512];
     strcpy(log_file_name, config.log_file_name.c_str());
-    Logger::get_instance().init(log_file_name, config.run_backend, config.log_mode);
+    Logger::get_instance().init(log_file_name, config.run_backend, config.enable_logging, config.log_mode);
 }
 
 

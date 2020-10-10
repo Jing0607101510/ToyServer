@@ -124,7 +124,7 @@ void EventLoop::updatePoller(std::shared_ptr<Channel> sp_channel, int timeout){
     // 将Channel修改到epoll中
     if(sp_channel){
         if(timeout){
-            std::cout << "EventLoop::updatePoller() 新计时器" << std::endl;
+            // std::cout << "EventLoop::updatePoller() 新计时器" << std::endl;
             std::shared_ptr<HttpConn> sp_conn = sp_channel->getHolder();
             auto callback = std::bind(&HttpConn::closeHandler, sp_conn.get());
             std::shared_ptr<Timer> sp_timer(new Timer(timeout, callback));

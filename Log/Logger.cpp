@@ -5,11 +5,15 @@
 #include "../EventLoopThreadPool/EventLoopThread.h"
 
 
-bool Logger::init(char* log_file_name, bool run_backend, long log_mode, int cnt_split_file){
+bool Logger::init(char* log_file_name, bool run_backend, bool enable_logging, long log_mode, int cnt_split_file){
     this->m_log_mode = log_mode;
     this->m_cnt_split_file = cnt_split_file;
     this->m_run_backend = run_backend;
-
+    this->m_enable_logging = enable_logging;
+    if(this->m_enable_logging == false){
+        this->m_running = false;
+        return true;
+    }
     // 获取日期，以日期为文件名，首先得到日期字符串
     time_t now = time(NULL);
     struct tm* local_now = localtime(&now);
@@ -74,6 +78,7 @@ void Logger::async_write_log(){ // 线程运行这个函数，可以访问对象
 // 根据日志模式，同步写到文件，或者异步加入到日志队列中
 // 多个线程访问共享变量，所以需要加锁
 void Logger::append_log(long level, const char* format, ...){
+    if(!(m_enable_logging && m_running)) return;
     // 获取时间
     time_t now = time(NULL);
     struct tm* local_now = localtime(&now);
@@ -159,6 +164,7 @@ void Logger::stop(){ // 暂停日志系统
 Logger::Logger(){
     memset(this->m_dir_name, 0, sizeof(this->m_dir_name));
     memset(this->m_file_name, 0, sizeof(m_file_name));
+    this->m_enable_logging = true;
     this->m_running = true;
     this->m_log_cnt = 0;
     this->m_split_cnt = 0;

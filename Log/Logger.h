@@ -48,7 +48,7 @@ class Logger{
             static Logger instance;
             return instance;
         }
-        bool init(char* log_file_name, bool run_backend, long log_mode=LOG_MODE_SYNC, int cnt_split_file=10000); // 初始化日志系统中的参数
+        bool init(char* log_file_name, bool run_backend, bool enable_logging=true, long log_mode=LOG_MODE_SYNC, int cnt_split_file=10000); // 初始化日志系统中的参数
         void append_log(long level, const char* format, ...); 
         void stop(); // 暂停日志系统
         bool is_running(){return m_running;}
@@ -75,7 +75,7 @@ class Logger{
         bool m_log_mode; // 日志模式：同步或者异步
         bool m_running; // 处理日志的线程在running为false时，退出。 // 或者是否有开启日志
         bool m_run_backend; // 是否以守护进程的方式运行
-
+        bool m_enable_logging;
 
         // 自定义日志队列类，使用锁来保证线程安全
         std::list<std::string> m_log_queue;
@@ -88,9 +88,9 @@ class Logger{
         std::shared_ptr<std::thread> m_sp_thread; // 引用为0时，释放堆上的内存
 };
 
-#define LOG_DEBUG(format, ...) if(Logger::get_instance().is_running()){Logger::get_instance().append_log(LOG_LEVEL_DEBUG, format, ##__VA_ARGS__);}
-#define LOG_INFO(format, ...) if(Logger::get_instance().is_running()){Logger::get_instance().append_log(LOG_LEVEL_INFO, format, ##__VA_ARGS__);}
-#define LOG_WARNING(format, ...) if(Logger::get_instance().is_running()){Logger::get_instance().append_log(LOG_LEVEL_WARNING, format, ##__VA_ARGS__);}
-#define LOG_ERROR(format, ...) if(Logger::get_instance().is_running()){Logger::get_instance().append_log(LOG_LEVEL_ERROR, format, ##__VA_ARGS__);}
+#define LOG_DEBUG(format, ...) Logger::get_instance().append_log(LOG_LEVEL_DEBUG, format, ##__VA_ARGS__)
+#define LOG_INFO(format, ...) Logger::get_instance().append_log(LOG_LEVEL_INFO, format, ##__VA_ARGS__)
+#define LOG_WARNING(format, ...) Logger::get_instance().append_log(LOG_LEVEL_WARNING, format, ##__VA_ARGS__)
+#define LOG_ERROR(format, ...) Logger::get_instance().append_log(LOG_LEVEL_ERROR, format, ##__VA_ARGS__)
 
 #endif

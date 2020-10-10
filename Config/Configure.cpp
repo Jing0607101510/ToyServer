@@ -93,8 +93,8 @@ void Config::parse_args(int argc, char* argv[]){ // 设置参数
 
 Config::Config(){ // 默认方式初始化参数
     server_port = 9999;
-    // num_thread = 8;
-    num_thread = 1;
+    num_thread = 4;
+    // num_thread = 1;
     run_backend = false;
     no_linger = false;
     server_root = "root";
